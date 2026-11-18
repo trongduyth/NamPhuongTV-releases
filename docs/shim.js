@@ -94,7 +94,7 @@
     #npp .bar{position:absolute;top:0;left:0;right:0;z-index:3;background:linear-gradient(#000d,#0000);padding:8px calc(env(safe-area-inset-right) + 10px) 18px calc(env(safe-area-inset-left) + 10px)}
     #npp.idle .bar{opacity:0;pointer-events:none}
   }
-  .field:has(#upd-check), #player-toggle { display:none !important }`;
+  .field:has(#upd-check), #player-toggle, #tabs [data-go=fpt] { display:none !important }`;
   let P = null;
   function ui() {
     if (P) return P;
