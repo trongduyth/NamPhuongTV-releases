@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Nam Phương TV">
+<meta name="theme-color" content="#14161e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<style>html,body{background:#191b24} header{padding-left:max(3vw, env(safe-area-inset-left)) !important; padding-right:max(3vw, env(safe-area-inset-right)) !important}</style>
+<script src="shim.js"></script>
+<title>Nam Phương TV</title>
+<style>
+  :root {
+    --bg:#191b24; --bg2:#14161e; --panel:#23252f; --panel2:#2f3346; --line:#ffffff14;
+    --text:#ffffff; --sub:#aaaaaa; --muted:#7c8091;
+    --gold:#ffd875; --goldg:linear-gradient(39deg, #fecf59, #fff1cc);
+    --focus:#ffffff;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Arial, sans-serif; overflow:hidden; }
+  ::-webkit-scrollbar { display:none; }
+
+  /* ---------- Thanh trên: logo + 6 nút to (Truyền hình, Nguồn C, Nguồn VSMOV, Tìm kiếm, Lịch sử, Cài đặt) ---------- */
+  header { position:fixed; z-index:20; left:0; right:0; top:0; padding:1.4vh 3vw; display:flex; align-items:center; gap:2vw;
+    background:var(--bg2); border-bottom:1px solid var(--line); }
+  .logo { display:flex; align-items:flex-end; gap:.6vw; white-space:nowrap; flex:none; }
+  .logo .nm { font-weight:800; font-size:2.4vh; letter-spacing:.2px; line-height:1; text-align:center; }
+  .logo .nm b { display:block; color:var(--gold); font-size:3.6vh; margin-top:.2vh; letter-spacing:2px; }
+  .logo small { font-size:1.3vh; font-weight:400; color:var(--muted); margin-bottom:.3vh; }
+  #tabs { display:flex; gap:1vw; flex:1; min-width:0; overflow-x:auto; scroll-behavior:smooth; scrollbar-width:none; }
+  #tabs::-webkit-scrollbar { display:none; }
+  #tabs .f { flex:1 0 auto; min-width:11vw; height:8.4vh; padding:0 1vw; border-radius:1.6vh; background:var(--panel);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.5vh;
+    font-size:1.9vh; font-weight:700; color:#fff; white-space:nowrap; }
+  #tabs .f svg { width:3vh; height:3vh; }
+  #tabs .f.active { color:var(--gold); background:#ffd87522; box-shadow:inset 0 0 0 .25vh var(--gold); }
+  #tabs .f.focus { background:#fff; color:#111; box-shadow:none; }
+  /* Điện thoại dựng đứng: logo một hàng, menu một hàng; 4 nút đầu vừa màn hình, kéo ngang để thấy Lịch sử, Cài đặt */
+  @media (orientation: portrait) {
+    header { flex-direction:column; align-items:stretch; gap:1.2vh; padding:1.4vh 0 1.4vh 4vw; }
+    .logo { padding-right:4vw; }
+    .logo .nm { font-size:1.9vh; } .logo .nm b { font-size:2.8vh; }
+    #tabs { gap:2vw; padding-right:4vw; }
+    #tabs .f { flex:0 0 21.5vw; min-width:0; height:8vh; font-size:1.45vh; border-radius:1.4vh; padding:0 .5vw; }
+    #tabs .f span { white-space:normal; text-align:center; line-height:1.1; }
+  }
+
+  main { position:absolute; inset:0; }
+  .view { position:absolute; inset:0; top:var(--hh, 12vh); overflow-y:auto; padding:2.6vh 3vw 8vh; scroll-behavior:smooth; display:none; }
+  .view.show { display:block; }
+  #v-home { padding:0 0 8vh; }
+
+  /* ---------- Hero ---------- */
+  .hero { position:relative; height:74vh; overflow:hidden; background:#0d0e14; }
+  .hero .bd { position:absolute; inset:0; background:#0d0e14 center 25%/cover no-repeat; transition:opacity .5s; }
+  .hero::after { content:""; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(90deg, #191b24f2 0%, #191b24b3 30%, #191b2400 62%),
+               linear-gradient(0deg, #191b24 0%, #191b2400 38%); }
+  .hero .info { position:absolute; z-index:2; left:3vw; bottom:9vh; width:46vw; }
+  .hero h1 { margin:0; font-size:6vh; line-height:1.1; font-weight:800; text-shadow:0 .3vh 2vh #000a;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .hero .orig { color:var(--gold); font-size:2.2vh; margin:1vh 0 1.6vh; }
+  .badges { display:flex; flex-wrap:wrap; gap:.6vw; margin-bottom:1.4vh; }
+  .badges span { font-size:1.6vh; padding:.45vh .6vw; border-radius:.6vh; border:1px solid #ffffffb3; color:#fff; background:#0006; }
+  .badges span.g { background:var(--goldg); color:#111; border:0; font-weight:700; }
+  .badges span.w { background:#fff; color:#111; border:0; font-weight:700; }
+  .chips2 { display:flex; flex-wrap:wrap; gap:.5vw; margin-bottom:1.6vh; }
+  .chips2 span { font-size:1.6vh; padding:.5vh .7vw; border-radius:.6vh; background:#ffffff14; color:#ddd; }
+  .hero .desc { font-size:1.95vh; line-height:1.55; color:#d6d6d6; max-height:9.2vh; overflow:hidden; margin-bottom:2.4vh; }
+  .acts { display:flex; align-items:center; gap:1.2vw; }
+  .play { width:9vh; height:9vh; border-radius:50%; background:var(--goldg); color:#111; display:grid; place-items:center;
+    font-size:3.6vh; box-shadow:0 0 3vh #ffd87566; transition:transform .12s; padding-left:.5vh; }
+  .play.focus { transform:scale(1.12); box-shadow:0 0 0 .5vh #fff, 0 0 3vh #ffd875; }
+  .ghost { padding:1.6vh 1.6vw; border-radius:99px; border:1px solid #ffffff55; background:#00000055; font-size:2vh; }
+  .ghost.focus { background:#fff; color:#111; border-color:#fff; }
+  .thumbs { position:absolute; z-index:2; right:3vw; bottom:9vh; display:flex; gap:.7vw; }
+  .thumbs .f { width:7.5vw; aspect-ratio:16/10; border-radius:.8vh; background:#333 center/cover no-repeat;
+    border:2px solid #ffffff22; opacity:.75; transition:all .15s; }
+  .thumbs .f.on { border-color:#fff; opacity:1; }
+  .thumbs .f.focus { transform:scale(1.15); opacity:1; box-shadow:0 0 0 .4vh #fff; }
+
+  /* ---------- Chủ đề ---------- */
+  .sec { padding:0 3vw; margin-top:3.5vh; }
+  .sec h2 { font-size:3vh; margin:0 0 2vh; font-weight:700; display:flex; align-items:center; gap:1vw; }
+  .sec h2 .more { margin-left:auto; font-size:1.8vh; font-weight:500; color:#ddd; padding:.8vh 1vw; border-radius:99px; }
+  .sec h2 .more.focus { background:#fff; color:#111; }
+  .topics { display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:1.2vw; }
+  .topic { height:15vh; border-radius:1.4vh; padding:2vh 1.2vw; display:flex; flex-direction:column; justify-content:flex-end;
+    font-weight:800; font-size:2.5vh; line-height:1.15; transition:transform .12s; }
+  .topic small { font-weight:500; font-size:1.6vh; margin-top:1vh; opacity:.9; }
+  .topic.focus { transform:translateY(-.8vh) scale(1.04); box-shadow:0 0 0 .45vh #fff; }
+
+  /* ---------- Hàng phim ---------- */
+  .rowbox { background:linear-gradient(180deg, #282b3a80, #282b3a00); border-radius:2vh; padding:2.6vh 1.6vw 1vh; }
+  .ttl .h1 { background:linear-gradient(90deg, #ffd875, #ff9f6e); -webkit-background-clip:text; color:transparent; }
+  .ttl .h2 { background:linear-gradient(90deg, #ff6fb5, #c77dff); -webkit-background-clip:text; color:transparent; }
+  .ttl .h3 { background:linear-gradient(90deg, #67e8f9, #5b9dff); -webkit-background-clip:text; color:transparent; }
+  .ttl .h4 { background:linear-gradient(90deg, #8be28b, #3fc1a5); -webkit-background-clip:text; color:transparent; }
+  .row { display:flex; gap:1.2vw; overflow-x:auto; scroll-behavior:smooth; padding:1vh .4vw 1.5vh; scroll-padding:0 3vw; }
+  .lcard { flex:none; width:21vw; }
+  .lcard .img { position:relative; aspect-ratio:16/9; border-radius:1.2vh; background:#2a2d3a center/cover no-repeat; transition:transform .15s; }
+  .lcard .tag { position:absolute; left:.8vw; bottom:1vh; font-size:1.45vh; font-weight:700; padding:.35vh .5vw; border-radius:.5vh; background:#000a; color:#fff; }
+  .lcard .q { position:absolute; left:.6vw; top:.8vh; font-size:1.3vh; font-weight:700; padding:.3vh .45vw; border-radius:.5vh; background:#3a7bfd; color:#fff; }
+  .lcard .t { margin-top:1.2vh; font-size:2vh; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .lcard .o { margin-top:.4vh; font-size:1.65vh; color:var(--sub); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .lcard.focus .img { transform:scale(1.06); box-shadow:0 0 0 .45vh #fff, 0 1.5vh 4vh #000a; }
+  .lcard.focus .t { color:var(--gold); }
+
+  /* ---------- Lưới (danh sách, tìm kiếm, đã xem) ---------- */
+  .ptitle { font-size:3.6vh; margin:0 0 2.6vh; font-weight:800; }
+  .ptitle small { font-size:2vh; color:var(--sub); font-weight:400; margin-left:1vw; }
+  .grid { display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:3vh 1.3vw; }
+  .pcard .img { position:relative; aspect-ratio:2/3; border-radius:1.2vh; background:#2a2d3a center/cover no-repeat; transition:transform .15s; }
+  .pcard .tag { position:absolute; left:.6vw; bottom:.9vh; right:.6vw; font-size:1.45vh; font-weight:700; padding:.35vh .5vw; border-radius:.5vh;
+    background:#000b; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:max-content; max-width:calc(100% - 1.2vw); }
+  .pcard .t { margin-top:1.1vh; font-size:1.95vh; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pcard .o { margin-top:.3vh; font-size:1.6vh; color:var(--sub); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pcard.focus .img { transform:scale(1.06); box-shadow:0 0 0 .45vh #fff, 0 1.5vh 4vh #000a; }
+  .pcard.focus .t { color:var(--gold); }
+  .pager { display:flex; gap:1vw; justify-content:center; align-items:center; margin-top:4vh; font-size:2vh; color:var(--sub); }
+  .btn { display:inline-block; padding:1.3vh 1.6vw; border-radius:99px; background:var(--panel2); font-size:2vh; color:#fff; white-space:nowrap; }
+  .btn.focus { background:#fff; color:#111; }
+  .btn.sel { background:var(--goldg); color:#111; font-weight:700; }
+  .btn.sel.focus { box-shadow:0 0 0 .4vh #fff; }
+
+  /* ---------- Chi tiết ---------- */
+  #v-detail { padding:0 0 8vh; }
+  .dbd { position:relative; height:52vh; background:#0d0e14 center 20%/cover no-repeat; }
+  .dbd::after { content:""; position:absolute; inset:0; background:linear-gradient(0deg, #191b24 0%, #191b2499 45%, #191b2433 100%); }
+  .dwrap { position:relative; z-index:2; margin:-24vh 3vw 0; display:flex; gap:2.4vw; }
+  .dleft { width:24vw; flex:none; background:#191b24e6; border-radius:2vh; padding:2.4vh 1.4vw; backdrop-filter:blur(6px); }
+  .dleft .pst { width:11vw; aspect-ratio:2/3; border-radius:1.2vh; background:#2a2d3a center/cover no-repeat; margin-bottom:2vh; }
+  .dleft h2 { margin:0 0 .6vh; font-size:3vh; line-height:1.2; }
+  .dleft .orig { color:var(--gold); font-size:1.9vh; margin-bottom:1.6vh; }
+  .dleft .lb { font-size:1.75vh; color:#fff; font-weight:600; margin:1.6vh 0 .6vh; }
+  .dleft .tx { font-size:1.7vh; color:var(--sub); line-height:1.55; max-height:20vh; overflow:hidden; }
+  .dright { flex:1; min-width:0; background:#191b24e6; border-radius:2vh; padding:2.6vh 2vw; backdrop-filter:blur(6px); }
+  .dacts { display:flex; flex-wrap:wrap; align-items:center; gap:1vw; margin-bottom:3vh; }
+  .watch { display:inline-flex; align-items:center; gap:.8vw; padding:1.7vh 2.2vw; border-radius:99px; background:var(--goldg);
+    color:#111; font-weight:700; font-size:2.2vh; box-shadow:0 0 3vh #ffd87544; }
+  .watch.focus { box-shadow:0 0 0 .45vh #fff, 0 0 3vh #ffd875; transform:scale(1.04); }
+  .tabs { display:flex; gap:.6vw; flex-wrap:wrap; margin-bottom:2.4vh; border-bottom:1px solid var(--line); padding-bottom:1.6vh; }
+  .tabs .btn { background:transparent; border:1px solid #ffffff2a; }
+  .tabs .btn.sel { background:var(--goldg); border-color:transparent; }
+  .eph { font-size:2.6vh; font-weight:700; margin:0 0 1.8vh; }
+  .eps { display:grid; grid-template-columns:repeat(8, 1fr); gap:1.2vh .7vw; }
+  .eps .btn { text-align:center; border-radius:1vh; padding:1.4vh .3vw; background:var(--panel2); overflow:hidden; text-overflow:ellipsis; }
+  .eps .btn.seen { background:#3a3e53; color:#9ea3b5; }
+  .eps .btn.focus { background:#fff; color:#111; }
+
+  /* ---------- Ô nhập, cài đặt ---------- */
+  .field { margin-bottom:3vh; }
+  .field label { display:block; color:var(--sub); font-size:1.9vh; margin-bottom:1.2vh; }
+  input.f { width:56vw; font-size:2.4vh; padding:1.6vh 1.4vw; border-radius:99px; border:2px solid #ffffff22; background:var(--panel); color:#fff; outline:none; }
+  input.f.focus { border-color:#fff; }
+  .rowi { display:flex; gap:1vw; align-items:center; }
+  .chips { display:flex; flex-wrap:wrap; gap:.8vw; }
+  .note { color:var(--sub); font-size:1.8vh; line-height:1.65; margin-top:2vh; max-width:72vw; }
+  .msg { color:var(--sub); font-size:2.2vh; padding:6vh 0; text-align:center; }
+  .spinner { width:5vh; height:5vh; border:.5vh solid #ffffff22; border-top-color:var(--gold); border-radius:50%;
+    animation:spin 1s linear infinite; margin:8vh auto; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .skel { flex:none; width:21vw; aspect-ratio:16/9; border-radius:1.2vh; background:linear-gradient(90deg,#252836,#2f3346,#252836);
+    background-size:200% 100%; animation:sk 1.2s linear infinite; }
+  @keyframes sk { to { background-position:-200% 0; } }
+  .ssec { margin-bottom:3vh; } .ssec h2 { font-size:2.6vh; margin:0 0 1.6vh; font-weight:800; } .ssec h2 small { font-size:1.8vh; color:var(--sub); font-weight:400; margin-left:.8vw; }
+  /* ---------- Truyền hình ---------- */
+  .lvbar { display:flex; align-items:center; gap:1vw; margin:-1vh 0 3vh; flex-wrap:wrap; }
+  .lvbar .st { color:var(--sub); font-size:1.8vh; margin-left:.6vw; }
+  .lvgrp { margin-bottom:3.4vh; }
+  .lvgrp h2 { font-size:2.6vh; margin:0 0 1.6vh; font-weight:800; }
+  .lvgrp h2 small { font-size:1.8vh; color:var(--sub); font-weight:400; margin-left:.8vw; }
+  .chgrid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:2vh 1.4vw; }
+  .ch { display:flex; flex-direction:column; align-items:center; gap:1vh; padding:1.4vh .8vw 1.6vh; border-radius:1.6vh;
+    background:var(--panel); border:1px solid var(--line); transition:transform .12s; min-width:0; text-align:center; }
+  .ch .lg { width:100%; max-width:24vh; aspect-ratio:16 / 10; border-radius:1.2vh; background:#f2f3f7 center/contain no-repeat;
+    background-origin:content-box; padding:1vh; box-sizing:border-box;
+    display:grid; place-items:center; font-size:2.6vh; font-weight:900; color:#1d2a6b; overflow:hidden; }
+  .ch .nm { min-width:0; max-width:100%; }
+  .ch .nm b { display:block; font-size:2vh; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ch .nm i { display:block; font-style:normal; font-size:1.5vh; color:var(--muted); margin-top:.3vh; }
+  .ch.focus { transform:scale(1.04); background:var(--panel2); box-shadow:0 0 0 .4vh #fff; }
+  @media (orientation: portrait) { .chgrid { gap:1.2vh 2.4vw; } .ch { padding:1vh 1.2vw 1.2vh; } .ch .nm b { font-size:1.55vh; } .ch .nm i { font-size:1.25vh; } .ch .lg { font-size:1.9vh; padding:.6vh; } }
+  .ch.focus .nm b { color:var(--gold); }
+  /* ---------- Hộp cập nhật ---------- */
+  #upd { position:fixed; inset:0; z-index:40; background:#000b; display:none; align-items:center; justify-content:center; }
+  #upd.show { display:flex; }
+  #upd .box { width:46vw; background:#23252f; border-radius:2.4vh; padding:4vh 3vw; border:1px solid #ffffff1a; box-shadow:0 3vh 8vh #000c; }
+  #upd h3 { margin:0 0 1vh; font-size:3.2vh; }
+  #upd h3 b { background:var(--goldg); -webkit-background-clip:text; color:transparent; }
+  #upd .vv { color:var(--sub); font-size:1.9vh; margin-bottom:2vh; }
+  #upd .nt { color:#d6d6d6; font-size:1.8vh; line-height:1.6; max-height:22vh; overflow:hidden; white-space:pre-line; margin-bottom:2.6vh; }
+  #upd .bar { height:1vh; border-radius:99px; background:#ffffff1a; overflow:hidden; margin-bottom:1.4vh; display:none; }
+  #upd .bar i { display:block; height:100%; width:0; background:var(--goldg); transition:width .2s; }
+  #upd .st { color:var(--gold); font-size:1.9vh; min-height:2.4vh; margin-bottom:2vh; }
+  #toast { position:fixed; z-index:30; bottom:5vh; left:50%; transform:translateX(-50%); background:#000d; padding:1.4vh 2vw;
+    border-radius:99px; font-size:2vh; display:none; border:1px solid #ffffff22; }
+  /* điện thoại dựng đứng: các màn hình phim (đặt cuối để đè lên kiểu mặc định) */
+  @media (orientation: portrait) {
+    /* các màn hình phim trên điện thoại dựng đứng */
+    .ptitle { font-size:2.8vh; } .ptitle small { display:block; margin:.6vh 0 0; }
+    .grid { grid-template-columns:repeat(3, minmax(0, 1fr)); gap:2vh 3vw; }
+    .topics { grid-template-columns:repeat(2, minmax(0, 1fr)); gap:3vw; } .topic { height:10vh; }
+    .lcard { width:62vw; }
+    .hero { height:46vh; } .hero .info { width:88vw; left:4vw; bottom:4vh; } .hero h1 { font-size:3.6vh; }
+    .hero .desc { display:none; } .hero .thumbs { display:none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><div class="nm">Nam Phương<b>TV</b></div><small id="ver"></small></div>
+  <nav id="tabs">
+    <div class="f" data-go="live"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 21h8M9 2l3 4 3-4"/></svg><span>Truyền hình</span></div>
+    <div class="f" data-go="src" data-src="nguonc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></svg><span>Nguồn C</span></div>
+    <div class="f" data-go="src" data-src="vsmov"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></svg><span>Nguồn VSMOV</span></div>
+    <div class="f" data-go="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg><span>Tìm kiếm</span></div>
+    <div class="f" data-go="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Lịch sử</span></div>
+    <div class="f" data-go="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span>Cài đặt</span></div>
+  </nav>
+</header>
+<main>
+  <section class="view" id="v-home"></section>
+  <section class="view" id="v-list"></section>
+  <section class="view" id="v-detail"></section>
+  <section class="view" id="v-search">
+    <div class="ptitle">Tìm kiếm <small>trong cả Nguồn C và Nguồn VSMOV</small></div>
+    <div class="field">
+      <label>Nhập tên phim (OK để mở bàn phím), rồi bấm Enter hoặc nút “Tìm”</label>
+      <div class="rowi">
+        <input class="f" id="kw" type="search" placeholder="Ví dụ: Hoa Thiên Cốt">
+        <div class="f btn sel" id="do-search">🔍 Tìm</div>
+        <div class="f btn" id="clear-kw">Xóa</div>
+      </div>
+    </div>
+    <div id="search-res"></div>
+  </section>
+  <section class="view" id="v-history"></section>
+  <section class="view" id="v-live"></section>
+  <section class="view" id="v-settings">
+    <div class="ptitle">Cài đặt</div>
+    <div class="field"><label>Phát video bằng</label><div class="chips" id="player-chips"></div></div>
+    <div class="field"><label>Tự bấm "Bỏ qua" quảng cáo trong trình phát (khi trình phát cho phép)</label><div class="chips" id="skip-chips"></div></div>
+    <div class="field"><label>Cập nhật app (bản mới lấy từ GitHub) · tự kiểm tra khi mở app</label>
+      <div class="chips"><div class="f btn sel" id="upd-check">⟳ Kiểm tra cập nhật</div><span id="upd-auto-chips" class="chips"></span></div>
+      <div class="note" id="upd-status"></div></div>
+    <div class="field">
+      <label>Địa chỉ gốc API của nguồn đang chọn</label>
+      <input class="f" id="api" type="url">
+    </div>
+    <div class="chips">
+      <div class="f btn sel" id="save-api">Lưu</div>
+      <div class="f btn" id="reset-api">Khôi phục mặc định</div>
+      <div class="f btn" id="test-api">Kiểm tra kết nối</div>
+    </div>
+    <div class="note" id="api-status"></div>
+    <div class="note" id="src-note"></div>
+    <div class="note" id="ver-note"></div>
+  </section>
+</main>
+<div id="toast"></div>
+<div id="upd"><div class="box">
+  <h3>Có bản mới <b id="upd-ver"></b></h3>
+  <div class="vv" id="upd-cur"></div>
+  <div class="nt" id="upd-notes"></div>
+  <div class="bar"><i id="upd-bar"></i></div>
+  <div class="st" id="upd-st"></div>
+  <div class="chips"><div class="f btn sel" id="upd-go">⬇ Cập nhật ngay</div><div class="f btn" id="upd-later">Để sau</div></div>
+</div></div>
+
+<script>
+/* ---------- Cầu nối với Android (có bản giả khi mở bằng trình duyệt) ---------- */
+const A = window.Android || {
+  getPref: (k, d) => localStorage["p_" + k] ?? d,
+  setPref: (k, v) => localStorage["p_" + k] = v,
+  getVersion: () => "trình duyệt",
+  play: (t, e, i, base, mode) => { const ep = JSON.parse(e)[i]; window.open(mode === "vlc" && ep.m3u8 || ep.embed); }
+};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const strip = s => { const d = document.createElement("div"); d.innerHTML = s || ""; return d.textContent.trim(); };
+const clean = s => String(s ?? "").replace(/\s+/g, " ").trim();
+const join = v => Array.isArray(v) ? v.filter(Boolean).join(", ") : clean(v);
+const mins = t => /^\d+$/.test(String(t ?? "").trim()) ? t + " phút" : t;
+
+/* ---------- Các nguồn phim: mỗi nguồn đổi dữ liệu về một dạng chung ----------
+   Phim trong danh sách: { slug, name, orig, year, imgA, imgB, badge, quality }
+   imgA/imgB là 2 ảnh của nguồn; app tự dò ảnh nào ngang, ảnh nào dọc. */
+const SOURCES = {
+  nguonc: {
+    name: "Nguồn C",
+    api: "https://phim.nguonc.com/api",
+    doc: "phim.nguonc.com/api-document",
+    referer: "https://phim.nguonc.com/",
+    menu: [
+      ["Mới cập nhật", "films/phim-moi-cap-nhat"],
+      ["Phim bộ", "films/danh-sach/phim-bo"],
+      ["Phim lẻ", "films/danh-sach/phim-le"],
+      ["TV Shows", "films/danh-sach/tv-shows"],
+      ["Hoạt hình", "films/danh-sach/hoat-hinh"],
+      ["Đang chiếu", "films/danh-sach/phim-dang-chieu"],
+      ["Thuyết minh", "films/ngon-ngu/thuyet-minh"],
+    ],
+    listUrl: (path, page) => `${path}?page=${page}`,
+    searchUrl: (kw, page) => `films/search?keyword=${encodeURIComponent(kw)}&page=${page}`,
+    detailUrl: slug => `film/${encodeURIComponent(slug)}`,
+    list: j => ({
+      items: (j.items || []).map(m => ({ slug: m.slug, name: m.name, orig: m.original_name, year: m.year,
+        imgA: m.thumb_url, imgB: m.poster_url, badge: m.current_episode, quality: m.quality, lang: m.language })),
+      page: j.paginate?.current_page, total: j.paginate?.total_page,
+    }),
+    detail: j => {
+      const m = j.movie || {};
+      return {
+        slug: m.slug, name: m.name, orig: m.original_name, year: m.year,
+        imgA: m.thumb_url, imgB: m.poster_url, desc: strip(m.description),
+        quality: m.quality, lang: m.language, ep: m.current_episode, time: mins(m.time),
+        genres: Object.values(m.category || {}).flatMap(g => (g.list || []).map(x => x.name)),
+        director: m.director, casts: m.casts,
+        servers: (m.episodes || []).map(s => ({ name: clean(s.server_name),
+          eps: (s.items || []).map(e => ({ name: e.name, embed: e.embed })) })).filter(s => s.eps.length),
+      };
+    },
+  },
+  vsmov: {
+    name: "VSMOV",
+    api: "https://vsmov.com/api",
+    doc: "vsmov.com/api-document",
+    referer: "https://vsmov.com/",
+    menu: [
+      ["Mới cập nhật", "danh-sach/phim-moi-cap-nhat"],
+      ["Phim bộ", "danh-sach/phim-bo"],
+      ["Phim lẻ", "danh-sach/phim-le"],
+      ["Chiếu rạp", "danh-sach/phim-chieu-rap"],
+      ["Hoạt hình", "the-loai/hoat-hinh"],
+      ["Hành động", "the-loai/hanh-dong"],
+      ["Phim Việt", "quoc-gia/viet-nam"],
+    ],
+    listUrl: (path, page) => `${path}?page=${page}`,
+    searchUrl: (kw, page) => `tim-kiem?keyword=${encodeURIComponent(kw)}&page=${page}`,
+    detailUrl: slug => `phim/${encodeURIComponent(slug)}`,
+    list: j => ({
+      items: (j.items || []).map(m => ({ slug: m.slug, name: m.name, orig: m.origin_name, year: m.year,
+        imgA: m.thumb_url, imgB: m.poster_url, badge: m.episode_current || (m.year ? String(m.year) : ""),
+        quality: m.quality, lang: m.lang })),
+      page: j.pagination?.currentPage, total: j.pagination?.totalPages,
+    }),
+    detail: j => {
+      const m = j.movie || {};
+      return {
+        slug: m.slug, name: m.name, orig: m.origin_name, year: m.year,
+        imgA: m.thumb_url, imgB: m.poster_url, desc: strip(m.content),
+        quality: m.quality, lang: m.lang, ep: m.episode_current, time: mins(m.time),
+        genres: [...(m.category || []).map(x => x.name), ...(m.country || []).map(x => x.name)],
+        director: join(m.director), casts: join(m.actor),
+        servers: (j.episodes || []).map(s => ({ name: clean(s.server_name),
+          eps: (s.server_data || []).map(e => ({ name: e.name, embed: e.link_embed,
+            // link trực tiếp cho VLC: .../video/<id>  →  .../stream/<id>/master.m3u8
+            m3u8: e.link_m3u8 || String(e.link_embed || "").replace(/\/video\/([\w-]+).*$/, "/stream/$1/master.m3u8").replace(/^(?!.*master\.m3u8$).*$/, "") }))
+        })).filter(s => s.eps.length),
+      };
+    },
+  },
+};
+const PLAYERS = { app: "Trong app", vlc: "VLC" };
+const playerMode = () => A.getPref("player", "app") === "vlc" ? "vlc" : "app";
+const srcId = () => SOURCES[A.getPref("source", "nguonc")] ? A.getPref("source", "nguonc") : "nguonc";
+const apiOf = id => (A.getPref("api_" + id, "") || SOURCES[id].api).replace(/\/+$/, "");
+
+function toast(t) { const el = $("#toast"); el.textContent = t; el.style.display = "block";
+  clearTimeout(toast.h); toast.h = setTimeout(() => el.style.display = "none", 2500); }
+
+const cache = new Map();
+async function getJSON(id, path) {
+  const url = apiOf(id) + "/" + path;
+  if (cache.has(url)) return cache.get(url);
+  const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 15000);
+  try {
+    const r = await fetch(url, { headers: { Accept: "application/json" }, signal: ctl.signal });
+    if (r.status === 429) throw new Error("Máy chủ đang giới hạn tốc độ, đợi vài giây rồi thử lại.");
+    if (r.status === 404) throw new Error("Không tìm thấy dữ liệu (404).");
+    if (!r.ok) throw new Error("Lỗi HTTP " + r.status);
+    const j = await r.json();
+    if (j.status === false || (typeof j.status === "string" && j.status !== "success"))
+      throw new Error(j.message || j.msg || "API trả về lỗi");
+    cache.set(url, j);
+    return j;
+  } catch (e) {
+    throw new Error(e.name === "AbortError" ? "Hết thời gian chờ kết nối." : e.message);
+  } finally { clearTimeout(tm); }
+}
+
+/* ---------- Ảnh ngang / dọc ----------
+   Mỗi nguồn trả 2 ảnh (imgA, imgB) nhưng không nói ảnh nào ngang. Dò 1 lần cho mỗi nguồn rồi nhớ lại. */
+const ratioCache = new Map();
+function ratio(u) {
+  if (!u) return Promise.resolve(0);
+  if (!ratioCache.has(u)) ratioCache.set(u, new Promise(r => {
+    const i = new Image(); i.onload = () => r(i.naturalWidth / i.naturalHeight); i.onerror = () => r(0); i.src = u;
+  }));
+  return ratioCache.get(u);
+}
+const landKey = {};   // nguồn → "A" | "B": ảnh nào là ảnh ngang
+async function learn(src, m) {
+  if (landKey[src] || !m) return;
+  const saved = A.getPref("land_" + src, "");
+  if (saved) { landKey[src] = saved; return; }
+  const [a, b] = await Promise.all([ratio(m.imgA), ratio(m.imgB)]);
+  if (a > 1.05 || b > 1.05) { landKey[src] = b >= a ? "B" : "A"; A.setPref("land_" + src, landKey[src]); }
+}
+const landOf = (src, m) => (landKey[src] === "A" ? m.imgA : landKey[src] === "B" ? m.imgB : m.imgB) || m.imgA || m.imgB || "";
+const portOf = (src, m) => (landKey[src] === "A" ? m.imgB : landKey[src] === "B" ? m.imgA : m.imgA) || m.imgB || m.imgA || "";
+
+/* tải ảnh khi thẻ sắp hiện ra (đỡ nặng cho TV) */
+const lazyIO = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting) { const el = e.target; el.style.backgroundImage = `url('${el.dataset.bg}')`; lazyIO.unobserve(el); }
+}), { rootMargin: "60% 60%" });
+function lazy(root) { root.querySelectorAll("[data-bg]").forEach(el => el.dataset.bg && lazyIO.observe(el)); }
+
+/* ---------- Thanh trên ---------- */
+function buildMenu() { fitHeader(); }
+// chiều cao thanh trên thay đổi theo màn hình (TV / điện thoại dựng đứng): đẩy nội dung xuống cho vừa
+function fitHeader() { document.documentElement.style.setProperty("--hh", $("header").offsetHeight + "px"); }
+window.addEventListener("resize", fitHeader);
+function switchSource(id) {
+  if (!SOURCES[id]) return;
+  if (id !== srcId()) { A.setPref("source", id); }
+  openHome(false);
+}
+
+/* ---------- Điều hướng màn hình ---------- */
+const stack = [];          // lịch sử màn hình để nút Back quay lại
+let current = null;
+function show(view, state, push = true) {
+  if (push && current) stack.push({ ...current, focusIdx: focusIndex(), scroll: $("#v-" + current.view).scrollTop });
+  current = { view, state };
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("show", v.id === "v-" + view));
+  const movie = view === "home" || view === "list" || view === "detail";
+  document.querySelectorAll("header .f").forEach(n => n.classList.toggle("active",
+    movie ? n.dataset.go === "src" && n.dataset.src === (state?.src || srcId()) : n.dataset.go === view));
+  if (view !== "home") stopHeroTimer();
+}
+window.goBack = function () {
+  const ae = document.activeElement;
+  if (ae && ae.tagName === "INPUT") { ae.blur(); return true; } // Back khi đang gõ: chỉ thoát bàn phím
+  if ($("#upd").classList.contains("show")) { if (!upd.busy) closeUpdateBox(); return true; }
+  if (!stack.length) {
+    if (current?.view !== "live") { openLive(); return true; }
+    if (!inNav()) { focusEl($("header .f.active") || $("header [data-go=live]")); return true; }
+    return false;
+  }
+  const prev = stack.pop();
+  show(prev.view, prev.state, false);
+  if (prev.view === "list") renderList(prev.state, prev.focusIdx, prev.scroll);
+  else if (prev.view === "detail") renderDetail(prev.state, prev.focusIdx);
+  else if (prev.view === "history") renderHistory(prev.focusIdx);
+  else if (prev.view === "home") { startHeroTimer(); restoreFocus("home", prev.focusIdx, prev.scroll); }
+  else restoreFocus(prev.view, prev.focusIdx, prev.scroll);
+  return true;
+};
+function restoreFocus(view, idx, scroll) {
+  const box = $("#v-" + view); if (scroll != null) box.scrollTop = scroll;
+  const els = box.querySelectorAll(".f");
+  focusEl(els[Math.min(idx ?? 0, els.length - 1)] || $("header .f.active"));
+}
+
+/* ---------- Thẻ phim ---------- */
+function lcard(m, src) {
+  return `<div class="f lcard" data-slug="${esc(m.slug)}" data-src="${esc(src)}">
+    <div class="img" data-bg="${esc(landOf(src, m))}">
+      ${m.quality ? `<span class="q">${esc(m.quality)}</span>` : ""}
+      ${m.badge ? `<span class="tag">${esc(m.badge)}</span>` : ""}</div>
+    <div class="t">${esc(m.name)}</div><div class="o">${esc(m.orig || m.year || "")}</div></div>`;
+}
+function pcard(m, src) {
+  return `<div class="f pcard" data-slug="${esc(m.slug)}" data-src="${esc(src)}">
+    <div class="img" data-bg="${esc(m.port || portOf(src, m))}">${m.badge ? `<span class="tag">${esc(m.badge)}</span>` : ""}</div>
+    <div class="t">${esc(m.name)}</div><div class="o">${esc(m.orig || m.year || "")}</div></div>`;
+}
+
+/* ---------- Trang chủ ---------- */
+const TOPIC_COLORS = [
+  "linear-gradient(135deg,#f7c843,#d8735a)", "linear-gradient(135deg,#5fc1b5,#c46a8b)",
+  "linear-gradient(135deg,#6f7bd8,#c75a7e)", "linear-gradient(135deg,#8e6cd9,#d9667f)",
+  "linear-gradient(135deg,#e14f4f,#d97a5f)", "linear-gradient(135deg,#2bb39b,#c95a6b)",
+  "linear-gradient(135deg,#3d8bfd,#8a5cf6)" ];
+let hero = { items: [], idx: 0, src: null, timer: null };
+
+async function openHome(focusContent) {
+  stack.length = 0;
+  show("home", { src: srcId() }, false);
+  const id = srcId(), S = SOURCES[id], box = $("#v-home");
+  box.scrollTop = 0;
+  box.innerHTML = `<div class="hero" id="hero"><div class="bd" id="hero-bd"></div><div class="info" id="hero-info"><div class="spinner"></div></div><div class="thumbs" id="hero-thumbs"></div></div>
+    <div class="sec"><h2>Bạn đang quan tâm gì?</h2><div class="topics">${S.menu.slice(1).map(([t, p], i) =>
+      `<div class="f topic" data-go="list" data-path="${esc(p)}" data-title="${esc(t)}" style="background:${TOPIC_COLORS[i % 7]}">${esc(t)}<small>Xem chủ đề ›</small></div>`).join("")}</div></div>
+    ${S.menu.map(([t, p], i) => `<div class="sec"><div class="rowbox"><h2 class="ttl">${ttl(t, i)}
+        <div class="f more" data-go="list" data-path="${esc(p)}" data-title="${esc(t)}">Xem toàn bộ ›</div></h2>
+      <div class="row" id="row-${i}">${'<div class="skel"></div>'.repeat(4)}</div></div></div>`).join("")}`;
+  // hàng đầu tiên cũng là nguồn cho ảnh lớn
+  for (let i = 0; i < S.menu.length; i++) {
+    if (current?.view !== "home" || srcId() !== id) return;
+    const row = $("#row-" + i);
+    try {
+      const L = S.list(await getJSON(id, S.listUrl(S.menu[i][1], 1)));
+      if (i === 0) {
+        await learn(id, L.items[0]);
+        hero = { items: L.items.slice(0, 6), idx: 0, src: id, timer: hero.timer };
+        renderHero(focusContent);
+      }
+      row.innerHTML = L.items.map(m => lcard(m, id)).join("") || `<div class="msg">Không có phim.</div>`;
+      lazy(row);
+    } catch (e) {
+      row.innerHTML = `<div class="msg">${esc(e.message)}</div>`;
+      if (i === 0) $("#hero-info").innerHTML = `<div class="msg">${esc(e.message)}<br>Kiểm tra mạng hoặc địa chỉ API trong Cài đặt.</div>`;
+    }
+  }
+}
+function ttl(t, i) {
+  const w = t.split(" ");
+  return `<span><span class="h${i % 4 + 1}">${esc(w[0])}</span> ${esc(w.slice(1).join(" "))}</span>`;
+}
+function renderHero(focusIt) {
+  const { items, src } = hero;
+  if (!items.length) { $("#hero-info").innerHTML = ""; return; }
+  $("#hero-thumbs").innerHTML = items.map((m, i) =>
+    `<div class="f ${i === hero.idx ? "on" : ""}" data-hero="${i}" style="background-image:url('${esc(landOf(src, m))}')"></div>`).join("");
+  showHero(hero.idx);
+  startHeroTimer();
+  if (focusIt) focusEl($("#hero-play"));
+}
+async function showHero(i) {
+  const { items, src } = hero; const m = items[i]; if (!m) return;
+  hero.idx = i;
+  document.querySelectorAll("#hero-thumbs .f").forEach((t, k) => t.classList.toggle("on", k === i));
+  const bd = $("#hero-bd"); bd.style.opacity = .3;
+  setTimeout(() => { bd.style.backgroundImage = `url('${landOf(src, m)}')`; bd.style.opacity = 1; }, 180);
+  const hadFocus = focused && focused.closest && focused.closest("#hero-info");
+  $("#hero-info").innerHTML = `<h1>${esc(m.name)}</h1><div class="orig">${esc(m.orig || "")}</div>
+    <div class="badges">${m.quality ? `<span class="g">${esc(m.quality)}</span>` : ""}${m.year ? `<span>${esc(m.year)}</span>` : ""}
+      ${m.badge ? `<span class="w">${esc(m.badge)}</span>` : ""}${m.lang ? `<span>${esc(m.lang)}</span>` : ""}</div>
+    <div class="chips2" id="hero-genres"></div><div class="desc" id="hero-desc"></div>
+    <div class="acts"><div class="f play" id="hero-play" data-slug="${esc(m.slug)}" data-src="${esc(src)}">▶</div>
+      <div class="f ghost" data-slug="${esc(m.slug)}" data-src="${esc(src)}">ⓘ Chi tiết</div></div>`;
+  if (hadFocus) focusEl($("#hero-play"));
+  try { // mô tả và thể loại lấy từ trang chi tiết
+    const d = SOURCES[src].detail(await getJSON(src, SOURCES[src].detailUrl(m.slug)));
+    if (hero.items[hero.idx] !== m) return;
+    $("#hero-desc").textContent = d.desc || "";
+    $("#hero-genres").innerHTML = (d.genres || []).slice(0, 5).map(g => `<span>${esc(g)}</span>`).join("");
+  } catch {}
+}
+function startHeroTimer() {
+  stopHeroTimer();
+  hero.timer = setInterval(() => {
+    if (current?.view !== "home" || !hero.items.length) return;
+    if (focused && focused.closest && focused.closest(".hero")) return;     // đang chọn ở ảnh lớn thì không tự chuyển
+    showHero((hero.idx + 1) % hero.items.length);
+  }, 9000);
+}
+function stopHeroTimer() { if (hero.timer) clearInterval(hero.timer); hero.timer = null; }
+
+/* ---------- Danh sách ---------- */
+async function renderList(st, focusIdx, scroll) {
+  const box = $("#v-list"), S = SOURCES[st.src];
+  const head = `<div class="ptitle">${esc(st.title)}<small>${esc(S.name)}`;
+  box.innerHTML = `${head}</small></div><div class="spinner"></div>`;
+  try {
+    const L = S.list(await getJSON(st.src, S.listUrl(st.path, st.page)));
+    await learn(st.src, L.items[0]);
+    box.innerHTML = `${head} · Trang ${L.page || st.page}/${L.total || "?"}</small></div>
+      ${L.items.length ? `<div class="grid">${L.items.map(m => pcard(m, st.src)).join("")}</div>` : `<div class="msg">Không có phim.</div>`}
+      <div class="pager">
+        ${st.page > 1 ? `<div class="f btn" data-page="${st.page - 1}">‹ Trang trước</div>` : ""}
+        ${!L.total || st.page < L.total ? `<div class="f btn sel" data-page="${st.page + 1}">Trang sau ›</div>` : ""}
+      </div>`;
+    lazy(box);
+    if (current?.state !== st) return;      // người dùng đã sang màn hình khác
+    if (focusIdx != null) restoreFocus("list", focusIdx, scroll);
+    else if (!inNav()) focusEl(box.querySelector(".pcard") || box.querySelector(".f"));
+  } catch (e) { box.innerHTML = `${head}</small></div><div class="msg">${esc(e.message)}<br><br>Kiểm tra mạng hoặc địa chỉ API trong mục Cài đặt.</div>`; }
+}
+function openList(path, title, page = 1, fromNav = true) {
+  const st = { src: srcId(), path, title, page };
+  if (fromNav) stack.length = 0;
+  show("list", st, !fromNav);
+  $("#v-list").scrollTop = 0;
+  renderList(st);
+}
+
+/* ---------- Chi tiết phim ---------- */
+async function renderDetail(st, focusIdx) {
+  const box = $("#v-detail"), S = SOURCES[st.src];
+  box.innerHTML = `<div class="dbd"></div><div class="spinner"></div>`;
+  try {
+    const m = S.detail(await getJSON(st.src, S.detailUrl(st.slug)));
+    await learn(st.src, m);
+    st.movie = m;
+    if (st.server == null || st.server >= m.servers.length) st.server = 0;
+    const hist = history().find(h => h.slug === m.slug && (h.src || "nguonc") === st.src);
+    const srv = m.servers[st.server];
+    const badges = `${m.quality ? `<span class="g">${esc(m.quality)}</span>` : ""}${m.year ? `<span>${esc(m.year)}</span>` : ""}
+      ${m.ep ? `<span class="w">${esc(m.ep)}</span>` : ""}${m.time ? `<span>${esc(m.time)}</span>` : ""}${m.lang ? `<span>${esc(m.lang)}</span>` : ""}`;
+    box.innerHTML = `<div class="dbd" style="background-image:url('${esc(landOf(st.src, m))}')"></div>
+      <div class="dwrap">
+        <div class="dleft">
+          <div class="pst" style="background-image:url('${esc(portOf(st.src, m))}')"></div>
+          <h2>${esc(m.name)}</h2><div class="orig">${esc(m.orig || "")}</div>
+          <div class="badges">${badges}</div>
+          <div class="chips2">${(m.genres || []).map(g => `<span>${esc(g)}</span>`).join("")}</div>
+          ${m.desc ? `<div class="lb">Giới thiệu</div><div class="tx">${esc(m.desc)}</div>` : ""}
+          ${m.director ? `<div class="lb">Đạo diễn</div><div class="tx">${esc(m.director)}</div>` : ""}
+          ${m.casts ? `<div class="lb">Diễn viên</div><div class="tx">${esc(m.casts)}</div>` : ""}
+          <div class="lb">Nguồn</div><div class="tx">${esc(S.name)}</div>
+        </div>
+        <div class="dright">
+          <div class="dacts">
+            ${srv ? (hist ? `<div class="f watch" id="resume">▶ Xem tiếp tập ${esc(hist.epName)}</div>`
+                          : `<div class="f watch" data-ep="0" id="watch-now">▶ Xem ngay</div>`) : ""}
+            <div class="f btn" id="player-toggle">Phát bằng: <b>${PLAYERS[playerMode()]}</b> ⇄</div>
+          </div>
+          ${m.servers.length > 1 ? `<div class="tabs">${m.servers.map((s, i) =>
+              `<div class="f btn ${i === st.server ? "sel" : ""}" data-server="${i}">${esc(s.name)}</div>`).join("")}</div>` : ""}
+          ${srv ? `<div class="eph">Danh sách tập <small style="color:var(--sub);font-weight:400;font-size:1.8vh">· ${esc(srv.name)} · ${srv.eps.length} tập</small></div>
+            <div class="eps">${srv.eps.map((e, i) =>
+              `<div class="f btn ${hist && hist.seen && hist.seen.includes(e.name) ? "seen" : ""}" data-ep="${i}">${esc(e.name)}</div>`).join("")}</div>`
+            : `<div class="msg">Phim chưa có tập nào để xem.</div>`}
+        </div>
+      </div>`;
+    if (current?.state === st) restoreFocus("detail", focusIdx ?? 0, focusIdx ? null : 0);
+  } catch (e) { box.innerHTML = `<div style="height:12vh"></div><div class="msg">${esc(e.message)}</div>`; }
+}
+function openDetail(slug, src) { const st = { src: src || srcId(), slug, server: 0 }; show("detail", st); $("#v-detail").scrollTop = 0; renderDetail(st); }
+
+function playEp(i) {
+  const st = current.state, m = st.movie;
+  const srv = m.servers[st.server], ep = srv.eps[i];
+  // lưu lịch sử xem
+  let h = history(); const key = x => (x.src || "nguonc") === st.src && x.slug === m.slug;
+  const old = h.find(key);
+  const seen = Array.from(new Set([...(old?.seen || []), ep.name]));
+  h = h.filter(x => !key(x));
+  h.unshift({ src: st.src, slug: m.slug, name: m.name, orig: m.orig, port: portOf(st.src, m), badge: "Đã xem tập " + ep.name,
+              epName: ep.name, epIdx: i, server: st.server, seen, t: Date.now() });
+  A.setPref("history", JSON.stringify(h.slice(0, 80)));
+  A.play(m.name + (srv.name ? " [" + srv.name + "]" : ""), JSON.stringify(srv.eps), i, SOURCES[st.src].referer, playerMode());
+  setTimeout(async () => {
+    if (current?.state !== st) return;      // đã rời trang chi tiết
+    await renderDetail(st, focusIndex());
+    if (current?.state === st) focusEl(document.querySelector(`#v-detail .eps [data-ep="${i}"]`) || focused);
+  }, 800);
+}
+
+/* ---------- Đã xem ---------- */
+function history() {
+  try {
+    return (JSON.parse(A.getPref("history", "[]")) || []).map(x => ({ ...x,
+      port: x.port || x.thumb || x.thumb_url, badge: x.badge || x.current_episode, src: x.src || "nguonc" }));
+  } catch { return []; }
+}
+function renderHistory(focusIdx) {
+  const h = history(), box = $("#v-history");
+  box.innerHTML = `<div class="ptitle">Đã xem</div>` + (h.length ? `<div class="grid">${h.map(x =>
+      pcard({ ...x, badge: (SOURCES[x.src]?.name || "") + " · " + (x.badge || "") }, x.src)).join("")}</div>
+     <div class="pager"><div class="f btn" id="clear-hist">Xóa lịch sử</div></div>` : `<div class="msg">Chưa xem phim nào.</div>`);
+  lazy(box);
+  if (focusIdx != null) restoreFocus("history", focusIdx, 0);
+}
+
+/* ---------- Truyền hình (kênh trực tiếp) ---------- */
+// Danh sách kênh do Java tải mỗi lần mở app (không vướng CORS) rồi gửi sang qua window.onLiveTv.
+const live = { data: null, flat: [], loading: true };
+function setLive(json) {
+  try { live.data = JSON.parse(json); } catch { live.data = { ok: false, error: "Dữ liệu kênh lỗi", groups: [] }; }
+  live.loading = false;
+  live.flat = [];
+  (live.data.groups || []).forEach(g => g.channels.forEach(c => live.flat.push({ ...c, group: g.title })));
+}
+window.onLiveTv = function (json) {
+  setLive(json);
+  if (current?.view === "live") renderLive(inView("live") ? focusIndex() : null);
+};
+function inView(v) { return focused && focused.closest("#v-" + v); }
+function liveStatus() {
+  const d = live.data;
+  if (live.loading) return "Đang tải danh sách kênh…";
+  if (!d || !live.flat.length) return "✘ " + (d?.error || "Chưa có danh sách kênh");
+  const t = new Date(d.time || Date.now());
+  const hm = t.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) + " " + t.toLocaleDateString("vi-VN");
+  return `${live.flat.length} kênh · ` + (d.fromCache ? `mất mạng, dùng danh sách lưu lúc ${hm}` : `cập nhật lúc ${hm}`);
+}
+function initials(n) { return esc(n.replace(/\s+(HD|TV)$/i, "").replace(/\s+/g, "").slice(0, 6)); }
+function renderLive(focusIdx) {
+  const box = $("#v-live"), last = A.getPref("live_last", "");
+  const lastIdx = live.flat.findIndex(c => c.name === last);
+  let html = `<div class="ptitle">Truyền hình <small>kênh Việt Nam · iptv-org</small></div>
+    <div class="lvbar">${lastIdx >= 0 ? `<div class="f watch" data-ch="${lastIdx}">▶ Xem tiếp: ${esc(last)}</div>` : ""}
+      <div class="f btn" id="live-refresh">⟳ Làm mới</div><span class="st">${esc(liveStatus())}</span></div>`;
+  if (live.loading && !live.flat.length) html += `<div class="spinner"></div>`;
+  else if (!live.flat.length) html += `<div class="msg">Không tải được danh sách kênh. Kiểm tra mạng rồi bấm Làm mới.</div>`;
+  let n = 0;
+  (live.data?.groups || []).forEach(g => {
+    html += `<div class="lvgrp"><h2>${esc(g.title)}<small>${g.channels.length} kênh</small></h2><div class="chgrid">` +
+      g.channels.map(c => { const i = n++; return `<div class="f ch" data-ch="${i}">
+        <div class="lg"${c.logo ? ` data-bg="${esc(c.logo)}"` : ""}>${c.logo ? "" : initials(c.name)}</div>
+        <div class="nm"><b>${esc(c.name)}</b><i>${i + 1}${c.urls.length > 1 ? " · " + c.urls.length + " link" : ""}</i></div></div>`; }).join("") +
+      `</div></div>`;
+  });
+  box.innerHTML = html;
+  lazy(box);
+  if (focusIdx != null) restoreFocus("live", focusIdx, box.scrollTop);
+}
+function openLive() {
+  stack.length = 0; show("live", null, false);
+  $("#v-live").scrollTop = 0;
+  if (!live.data) { const j = A.liveTvCached ? A.liveTvCached() : ""; if (j) setLive(j); }
+  renderLive();
+  focusEl($("#v-live .ch") || $("#live-refresh"));
+}
+function playLive(i) {
+  if (!live.flat[i]) return;
+  A.setPref("live_last", live.flat[i].name);
+  A.playLive(JSON.stringify(live.flat), i);
+}
+
+/* ---------- Tìm kiếm ---------- */
+// Tìm trong cả 2 nguồn cùng lúc; mỗi nguồn một khối kết quả, có nút trang riêng
+async function doSearch(page = 1, moveFocus = true) {
+  const kw = $("#kw").value.trim(); const box = $("#search-res");
+  if (!kw) return;
+  const key = kw + "|" + page;   // tránh tìm 2 lần (Enter + change)
+  if (doSearch.key === key && Date.now() - doSearch.t < 1500) return;
+  doSearch.key = key; doSearch.t = Date.now(); doSearch.kw = kw;
+  box.innerHTML = Object.entries(SOURCES).map(([id, S]) =>
+    `<div class="ssec" id="sres-${id}"><h2>${esc(S.name)}</h2><div class="spinner"></div></div>`).join("");
+  await Promise.all(Object.keys(SOURCES).map(id => searchOne(id, page, false)));
+  if (moveFocus && current?.view === "search") focusEl(box.querySelector(".pcard") || $("#kw"));
+}
+async function searchOne(id, page, moveFocus) {
+  const kw = doSearch.kw, S = SOURCES[id], sec = $("#sres-" + id);
+  if (!kw || !sec) return;
+  sec.innerHTML = `<h2>${esc(S.name)}</h2><div class="spinner"></div>`;
+  try {
+    const L = S.list(await getJSON(id, S.searchUrl(kw, page)));
+    await learn(id, L.items[0]);
+    if (doSearch.kw !== kw) return;
+    const total = L.total || 1;
+    sec.innerHTML = `<h2>${esc(S.name)} <small>${L.items.length ? "trang " + page + "/" + total : ""}</small></h2>` + (L.items.length
+      ? `<div class="grid">${L.items.map(m => pcard(m, id)).join("")}</div>
+      <div class="pager">${page > 1 ? `<div class="f btn" data-ssrc="${id}" data-spage="${page - 1}">‹ Trang trước</div>` : ""}
+      ${page < total ? `<div class="f btn sel" data-ssrc="${id}" data-spage="${page + 1}">Trang sau ›</div>` : ""}</div>`
+      : `<div class="msg">Không tìm thấy phim phù hợp với “${esc(kw)}”.</div>`);
+    lazy(sec);
+    if (moveFocus) focusEl(sec.querySelector(".pcard") || sec.querySelector(".f") || $("#kw"));
+  } catch (e) { sec.innerHTML = `<h2>${esc(S.name)}</h2><div class="msg">${esc(e.message)}</div>`; }
+}
+
+/* ---------- Cài đặt ---------- */
+function renderSettings() {
+  const id = srcId();
+  $("#player-chips").innerHTML = Object.entries(PLAYERS).map(([k, n]) =>
+    `<div class="f btn ${k === playerMode() ? "sel" : ""}" data-player-pick="${k}">${esc(n)}</div>`).join("");
+  const sk = A.getPref("autoskip", "1") !== "0";
+  $("#skip-chips").innerHTML = [["1", "Bật"], ["0", "Tắt"]].map(([v, n]) =>
+    `<div class="f btn ${(v === "1") === sk ? "sel" : ""}" data-skip-pick="${v}">${n}</div>`).join("");
+  renderUpdAuto();
+  $("#api").value = apiOf(id);
+  $("#api-status").textContent = "";
+  $("#src-note").innerHTML = `Mặc định của ${esc(SOURCES[id].name)}: ${esc(SOURCES[id].api)} — tài liệu tại ${esc(SOURCES[id].doc)}.<br>
+    Có thể nhập địa chỉ khác có cùng cấu trúc phản hồi với nguồn này.`;
+  $("#ver-note").innerHTML = "Phím khi xem phim: OK phát/dừng · ←/→ tua 10 giây · ↑ bỏ qua mở đầu · ↓ hiện con trỏ để bấm nút trên màn hình (vd \"Bỏ qua\" quảng cáo) · Kênh +/− tập sau/trước · Menu xem hướng dẫn.<br>";
+  $("#ver-note").insertAdjacentText("beforeend", "Nam Phương TV phiên bản " + appVersion() +
+    " · VLC: Nguồn VSMOV mở thẳng link video; Nguồn C phải tải trang phát để lấy link nên chậm hơn vài giây.");
+}
+
+/* ---------- Tự cập nhật app (GitHub Releases) ---------- */
+let upd = { info: null, manual: false, prevFocus: null, busy: false };
+const canUpdate = () => !!(A.checkUpdate && A.installUpdate);
+function checkUpdate(manual) {
+  if (!canUpdate()) { if (manual) $("#upd-status").textContent = "Chỉ kiểm tra được khi chạy trong app."; return; }
+  upd.manual = manual;
+  if (manual) $("#upd-status").textContent = "Đang kiểm tra…";
+  A.setPref("upd_last", String(Date.now()));
+  A.checkUpdate();
+}
+window.onUpdate = function (json) {
+  let r; try { r = JSON.parse(json); } catch { return; }
+  upd.info = r;
+  if (!r.ok) { if (upd.manual) $("#upd-status").textContent = "✘ " + (r.error || "Không kiểm tra được"); return; }
+  if (!r.newer) {
+    if (upd.manual) $("#upd-status").textContent = `✔ Đang dùng bản mới nhất (${r.current}).`;
+    return;
+  }
+  if (upd.manual) $("#upd-status").textContent = `Có bản mới ${r.latest} (đang dùng ${r.current}).`;
+  if (!upd.manual && Date.now() - +A.getPref("upd_later_" + r.latest, "0") < 24 * 3600e3) return; // "Để sau" trong 24 giờ
+  openUpdateBox(r);
+};
+function openUpdateBox(r) {
+  $("#upd-ver").textContent = r.latest;
+  $("#upd-cur").textContent = `Đang dùng ${r.current}` + (r.size ? ` · tải về khoảng ${(r.size / 1048576).toFixed(1)} MB` : "");
+  $("#upd-notes").textContent = (r.notes || "").replace(/\*\*/g, "").trim() || "Bản mới của Nam Phương TV.";
+  $("#upd-st").textContent = ""; $(".bar").style.display = "none"; $("#upd-bar").style.width = "0";
+  upd.prevFocus = focused; upd.busy = false;
+  $("#upd").classList.add("show");
+  focusEl($("#upd-go"));
+}
+function closeUpdateBox() {
+  $("#upd").classList.remove("show");
+  focusEl(upd.prevFocus && upd.prevFocus.isConnected ? upd.prevFocus : $("header .f.active") || $("header [data-go=live]"));
+}
+window.onUpdateState = function (json) {
+  let s; try { s = JSON.parse(json); } catch { return; }
+  if (!$("#upd").classList.contains("show") && upd.info?.newer) openUpdateBox(upd.info);
+  $("#upd-st").textContent = s.msg + (s.state === "download" && s.pct ? ` ${s.pct}%` : "");
+  $(".bar").style.display = s.state === "download" || s.state === "install" ? "block" : "none";
+  $("#upd-bar").style.width = (s.pct || 0) + "%";
+  upd.busy = s.state === "download" || s.state === "install";
+  if (s.state === "perm" || s.state === "error") $("#upd-go").textContent = "⬇ Thử lại";
+};
+function renderUpdAuto() {
+  const on = A.getPref("upd_auto", "1") !== "0";
+  $("#upd-auto-chips").innerHTML = [["1", "Tự kiểm tra: Bật"], ["0", "Tắt"]].map(([v, n]) =>
+    `<div class="f btn ${(v === "1") === on ? "sel" : ""}" data-upd-auto="${v}">${n}</div>`).join("");
+}
+
+/* ---------- Điều khiển bằng remote (di chuyển không gian) ---------- */
+let focused = null;
+function focusEl(el) {
+  if (!el) return;
+  if (focused) focused.classList.remove("focus");
+  focused = el; el.classList.add("focus");
+  if (el.tagName === "INPUT") el.focus(); else if (document.activeElement?.tagName === "INPUT") document.activeElement.blur();
+  const row = el.closest(".row, #tabs");
+  if (row) { // hàng cuộn ngang: đưa thẻ vào giữa khung nhìn
+    const r = el.getBoundingClientRect(), rr = row.getBoundingClientRect();
+    if (r.left < rr.left + 20 || r.right > rr.right - 20) row.scrollLeft += (r.left + r.width / 2) - (rr.left + rr.width / 2);
+  }
+  const view = el.closest(".view");
+  if (view) { // giữ khoảng đệm phía trên/dưới
+    if (el.closest(".hero")) { view.scrollTop = 0; return; }
+    const r = el.getBoundingClientRect();
+    const top = innerHeight * .16, bottom = innerHeight * .88;
+    if (r.top < top) view.scrollTop -= top - r.top;
+    else if (r.bottom > bottom) view.scrollTop += r.bottom - bottom;
+  }
+}
+function inNav() { return focused && focused.closest("header"); }
+function focusables() {
+  if ($("#upd").classList.contains("show")) return [...document.querySelectorAll("#upd .f")];
+  return [...document.querySelectorAll("header .f, .view.show .f")].filter(e => e.offsetParent !== null);
+}
+function focusIndex() {
+  const els = [...document.querySelectorAll(".view.show .f")]; const i = els.indexOf(focused); return i < 0 ? 0 : i;
+}
+function pickIn(cands, dir, a) {
+  const ax = a.left + a.width / 2, ay = a.top + a.height / 2;
+  let best = null, bestScore = Infinity;
+  for (const el of cands) {
+    const b = el.getBoundingClientRect(); const bx = b.left + b.width / 2, by = b.top + b.height / 2;
+    const dx = bx - ax, dy = by - ay;
+    let main, cross;
+    if (dir === "left")  { if (b.right > a.left + 2) continue; main = -dx; cross = Math.abs(dy); }
+    if (dir === "right") { if (b.left < a.right - 2) continue; main = dx;  cross = Math.abs(dy); }
+    if (dir === "up")    { if (b.bottom > a.top + 2) continue; main = -dy; cross = Math.abs(dx); }
+    if (dir === "down")  { if (b.top < a.bottom - 2) continue; main = dy;  cross = Math.abs(dx); }
+    const score = main + cross * (dir === "left" || dir === "right" ? 3 : 1.2);
+    if (score < bestScore) { bestScore = score; best = el; }
+  }
+  return best;
+}
+function move(dir) {
+  const els = focusables();
+  if (!focused || !els.includes(focused)) { focusEl(els[0]); return; }
+  const a = focused.getBoundingClientRect();
+  const inHead = !!inNav();
+  const others = els.filter(e => e !== focused);
+  // trong cùng hàng cuộn ngang: ←/→ chỉ đi trong hàng đó
+  const row = focused.closest(".row, #tabs");
+  if (row && (dir === "left" || dir === "right")) {
+    const sib = [...row.querySelectorAll(".f")]; const i = sib.indexOf(focused) + (dir === "right" ? 1 : -1);
+    if (sib[i]) focusEl(sib[i]);
+    return;
+  }
+  const same = others.filter(e => !!e.closest("header") === inHead);
+  let best = pickIn(same, dir, a);
+  if (!best && (dir === "up" || dir === "down")) best = pickIn(others, dir, a);        // lên thanh trên / xuống nội dung
+  if (!best && inHead && dir === "down") best = $(".view.show .f");
+  if (best) focusEl(best);
+  else if (dir === "up" && !inHead && !$("#upd").classList.contains("show")) focusEl($("header .f.active") || $("header [data-go=live]"));
+}
+function activate(el) {
+  if (!el) return;
+  if (el.id === "upd-go") {
+    if (upd.busy || !upd.info?.url) return;
+    upd.busy = true; $("#upd-st").textContent = "Đang chuẩn bị…"; $("#upd-go").textContent = "⬇ Cập nhật ngay";
+    A.installUpdate(upd.info.url); return;
+  }
+  if (el.id === "upd-later") {
+    if (upd.info?.latest) A.setPref("upd_later_" + upd.info.latest, String(Date.now()));
+    return closeUpdateBox();
+  }
+  if (el.id === "upd-check") return checkUpdate(true);
+  if (el.dataset.updAuto) { A.setPref("upd_auto", el.dataset.updAuto); renderUpdAuto(); return focusEl($(`[data-upd-auto="${el.dataset.updAuto}"]`)); }
+  if (el.dataset.hero != null) { showHero(+el.dataset.hero); return; }
+  if (el.dataset.go) {
+    const g = el.dataset.go;
+    if (g === "list") return openList(el.dataset.path, el.dataset.title);
+    if (g === "home") return openHome(false);
+    if (g === "src") return switchSource(el.dataset.src);
+    if (g === "live") return openLive();
+    stack.length = 0; show(g, null, false);
+    if (g === "search") return focusEl($("#kw"));
+    if (g === "settings") { renderSettings(); return focusEl($(".view.show .f.sel") || $("#api")); }
+    if (g === "history") { renderHistory(); return focusEl($("#v-history .f") || el); }
+  }
+  if (el.dataset.ch != null) return playLive(+el.dataset.ch);
+  if (el.id === "live-refresh") {
+    live.loading = true; A.liveTvRefresh(); renderLive(); return focusEl($("#live-refresh"));
+  }
+  if (el.dataset.slug) return openDetail(el.dataset.slug, el.dataset.src);
+  if (el.dataset.page) { const st = current.state; return openList(st.path, st.title, +el.dataset.page, false); }
+  if (el.dataset.spage) return searchOne(el.dataset.ssrc, +el.dataset.spage, true);
+  if (el.dataset.server) { current.state.server = +el.dataset.server; return renderDetail(current.state, focusIndex()); }
+  if (el.dataset.ep) return playEp(+el.dataset.ep);
+  if (el.id === "resume") {
+    const st = current.state, h = history().find(x => x.slug === st.movie.slug && x.src === st.src);
+    st.server = h.server || 0; return playEp(h.epIdx || 0);
+  }
+  if (el.id === "player-toggle") {
+    A.setPref("player", playerMode() === "vlc" ? "app" : "vlc");
+    toast("Phát video bằng: " + PLAYERS[playerMode()]);
+    el.querySelector("b").textContent = PLAYERS[playerMode()]; return;
+  }
+  if (el.dataset.skipPick) {
+    A.setPref("autoskip", el.dataset.skipPick); renderSettings();
+    toast("Tự bỏ qua quảng cáo: " + (el.dataset.skipPick === "1" ? "Bật" : "Tắt"));
+    return focusEl($(`[data-skip-pick="${el.dataset.skipPick}"]`));
+  }
+  if (el.dataset.playerPick) {
+    A.setPref("player", el.dataset.playerPick); renderSettings();
+    toast("Phát video bằng: " + PLAYERS[playerMode()]);
+    return focusEl($(`[data-player-pick="${playerMode()}"]`));
+  }
+  if (el.id === "kw" || el.id === "api") { el.focus(); return; }
+  if (el.id === "do-search") {
+    if (!$("#kw").value.trim()) { toast("Nhập tên phim trước đã"); return focusEl($("#kw")); }
+    doSearch.key = ""; return doSearch(1);
+  }
+  if (el.id === "clear-kw") { $("#kw").value = ""; $("#search-res").innerHTML = ""; return focusEl($("#kw")); }
+  const id = srcId();
+  if (el.id === "save-api") { const v = $("#api").value.trim(); if (!/^https?:\/\//.test(v)) return toast("Địa chỉ phải bắt đầu bằng http:// hoặc https://");
+    A.setPref("api_" + id, v); cache.clear(); return toast("Đã lưu địa chỉ API cho " + SOURCES[id].name); }
+  if (el.id === "reset-api") { A.setPref("api_" + id, ""); $("#api").value = apiOf(id); cache.clear(); return toast("Đã khôi phục mặc định"); }
+  if (el.id === "test-api") {
+    const s = $("#api-status"); s.textContent = "Đang kiểm tra…"; cache.clear();
+    const saved = A.getPref("api_" + id, ""); A.setPref("api_" + id, $("#api").value.trim());
+    const S = SOURCES[id];
+    return getJSON(id, S.listUrl(S.menu[0][1], 1))
+      .then(j => { const L = S.list(j); s.textContent = `✔ Kết nối được: ${L.items.length} phim ở trang 1, tổng ${L.total ?? "?"} trang. Bấm Lưu để giữ địa chỉ này.`; })
+      .catch(e => s.textContent = "✘ " + e.message)
+      .finally(() => { A.setPref("api_" + id, saved); cache.clear(); });
+  }
+  if (el.id === "clear-hist") { A.setPref("history", "[]"); renderHistory(); focusEl($("header .f.active") || $("header [data-go=live]")); }
+}
+
+document.addEventListener("keydown", e => {
+  const k = e.key, inInput = document.activeElement?.tagName === "INPUT";
+  if (inInput && (k === "ArrowLeft" || k === "ArrowRight")) {
+    // di chuyển con trỏ chữ trong ô nhập; ở đầu/cuối dòng thì chuyển sang nút bên cạnh
+    const el = document.activeElement, atEnd = el.selectionStart >= el.value.length, atStart = el.selectionEnd <= 0;
+    if (!((k === "ArrowRight" && atEnd) || (k === "ArrowLeft" && atStart))) return;
+  }
+  if (inInput && k === "Enter") {
+    e.preventDefault();
+    const id = document.activeElement.id; document.activeElement.blur();
+    if (id === "kw") doSearch(1);
+    if (id === "api") focusEl($("#save-api"));
+    return;
+  }
+  const map = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" };
+  if (map[k]) { e.preventDefault(); move(map[k]); return; }
+  if (inInput) return;                       // gõ chữ (kể cả dấu cách) trong ô nhập
+  if (k === "Enter" || k === " ") { e.preventDefault(); activate(focused); return; }
+  if (k === "Escape" || k === "Backspace") { e.preventDefault(); goBack(); }
+});
+document.addEventListener("click", e => { const el = e.target.closest(".f"); if (el) { focusEl(el); activate(el); } });
+// bàn phím ảo trên điện thoại/TV có thể không gửi phím Enter: tìm khi ô nhập đổi giá trị
+$("#kw").addEventListener("change", () => doSearch(1, false));
+// quay lại app sau khi xem: làm mới phần "đã xem"
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && current?.view === "history") renderHistory(focusIndex());
+  if (!document.hidden && current?.view === "live") renderLive(inView("live") ? focusIndex() : null);
+});
+
+/* ---------- Khởi động ---------- */
+function appVersion() { try { return A.getVersion ? A.getVersion() : "?"; } catch { return "?"; } }
+$("#ver").textContent = "v" + appVersion();
+buildMenu();
+{ const j = A.liveTvCached ? A.liveTvCached() : ""; if (j) setLive(j); }
+openLive();   // mở app vào thẳng tab Truyền hình
+// tự kiểm tra bản mới khi mở app (tối đa 3 giờ một lần)
+if (A.getPref("upd_auto", "1") !== "0" && Date.now() - +A.getPref("upd_last", "0") > 3 * 3600e3)
+  setTimeout(() => checkUpdate(false), 4000);
+</script>
+</body>
+</html>
