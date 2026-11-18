@@ -153,7 +153,26 @@
     const ep = P.list[P.i];
     P.title.textContent = P.base + (P.list.length > 1 ? " · Tập " + ep.name : "");
     if (ep.m3u8) { playHls(ep.m3u8, () => frame(ep.embed)); return; }
+    if (/nguonc/i.test(P.ref || "") || /streamc\./i.test(ep.embed || "")) { nguoncPage(ep); return; }
     frame(ep.embed);
+  }
+  /* Nguồn C chặn nhúng trình phát vào trang khác (chỉ cho phim.nguonc.com) nên mở thẳng trang phim của họ */
+  function nguoncPage(ep) {
+    clear();
+    let slug = "";
+    try { slug = (current && current.state && (current.state.slug || (current.state.movie || {}).slug)) || ""; } catch (e) {}
+    const url = "https://phim.nguonc.com/" + (slug ? "phim/" + encodeURIComponent(slug) : "");
+    const box = document.createElement("div");
+    box.style.cssText = "position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:24px;text-align:center;line-height:1.5";
+    box.innerHTML = '<div style="font-size:18px;margin-bottom:10px">Nguồn C không cho phát trong ứng dụng web.</div>'
+      + '<div style="opacity:.8;margin-bottom:18px">Bấm nút dưới để mở trang phim trên Nguồn C, rồi chọn <b>Tập ' + (ep.name || "") + '</b> và bấm <b>Xem ngay</b>.</div>';
+    const a = document.createElement("a");
+    a.href = url; a.target = "_blank"; a.rel = "noopener";
+    a.textContent = "Mở trên trang Nguồn C ↗";
+    a.style.cssText = "display:inline-block;padding:14px 22px;border-radius:12px;background:#e50914;color:#fff;font-size:17px;text-decoration:none";
+    box.appendChild(a);
+    P.stage.appendChild(box);
+    setTimeout(() => a.focus(), 50);
   }
   function frame(src) {
     clear();
@@ -177,7 +196,7 @@
     liveTvCached: () => liveJson,
     liveTvRefresh: () => loadLive(),
     playLive: (json, i) => { ui(); P.kind = "live"; P.list = JSON.parse(json); P.i = i; open(); playChannel(); },
-    play: (title, eps, i, base, mode) => { ui(); P.kind = "movie"; P.base = title; P.list = JSON.parse(eps); P.i = i; open(); playEpisode(); }
+    play: (title, eps, i, base, mode) => { ui(); P.kind = "movie"; P.base = title; P.ref = base; P.list = JSON.parse(eps); P.i = i; open(); playEpisode(); }
   };
   document.addEventListener("DOMContentLoaded", () => { ui(); loadLive(); });
 })();
