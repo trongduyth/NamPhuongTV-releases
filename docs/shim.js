@@ -89,6 +89,11 @@
   #npp .stage{flex:1;position:relative;background:#000}
   #npp video,#npp iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
   #npp .msg{position:absolute;left:50%;top:16px;transform:translateX(-50%);background:#000c;padding:8px 14px;border-radius:10px;font-size:14px;max-width:90%;text-align:center}
+  #npp .bar{transition:opacity .3s}
+  @media (orientation:landscape) and (max-height:540px){
+    #npp .bar{position:absolute;top:0;left:0;right:0;z-index:3;background:linear-gradient(#000d,#0000);padding:8px calc(env(safe-area-inset-right) + 10px) 18px calc(env(safe-area-inset-left) + 10px)}
+    #npp.idle .bar{opacity:0;pointer-events:none}
+  }
   .field:has(#upd-check), #player-toggle { display:none !important }`;
   let P = null;
   function ui() {
@@ -96,13 +101,18 @@
     const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
     const d = document.createElement("div"); d.id = "npp";
     d.innerHTML = `<div class="bar"><button id="npp-x" aria-label="Đóng">✕</button><b id="npp-t"></b>
-      <button id="npp-prev" aria-label="Trước">‹</button><button id="npp-next" class="gold" aria-label="Sau">›</button></div>
+      <button id="npp-fs" aria-label="Toàn màn hình">⛶</button><button id="npp-prev" aria-label="Trước">‹</button><button id="npp-next" class="gold" aria-label="Sau">›</button></div>
       <div class="stage" id="npp-s"></div>`;
     document.body.appendChild(d);
     P = { root: d, title: d.querySelector("#npp-t"), stage: d.querySelector("#npp-s"), list: [], i: 0, kind: "" };
     d.querySelector("#npp-x").onclick = close;
     d.querySelector("#npp-prev").onclick = () => go(-1);
     d.querySelector("#npp-next").onclick = () => go(1);
+    d.querySelector("#npp-fs").onclick = fullscreen;
+    // Xoay ngang: thanh trên tự ẩn sau 3 giây, chạm vào màn hình để hiện lại
+    const wake = () => { d.classList.remove("idle"); clearTimeout(P.idleT); P.idleT = setTimeout(() => d.classList.add("idle"), 3000); };
+    ["touchstart", "mousemove", "click"].forEach(ev => d.addEventListener(ev, wake, { capture: true, passive: true }));
+    P.wake = wake;
     document.addEventListener("keydown", e => {
       if (!d.classList.contains("show")) return;
       const k = e.key;
@@ -117,7 +127,14 @@
   function clear() { if (hls) { hls.destroy(); hls = null; } P.stage.innerHTML = ""; }
   function msg(t) { let m = P.stage.querySelector(".msg"); if (!m) { m = document.createElement("div"); m.className = "msg"; P.stage.appendChild(m); } m.textContent = t; m.hidden = !t; }
   function close() { clear(); P.root.classList.remove("show"); document.body.style.overflow = ""; if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); }
-  function open() { P.root.classList.add("show"); document.body.style.overflow = "hidden"; }
+  function fullscreen() {
+    const v = P.stage.querySelector("video"), r = P.root;
+    if (document.fullscreenElement || document.webkitFullscreenElement) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+    if (r.requestFullscreen) { r.requestFullscreen().catch(() => { if (v && v.webkitEnterFullscreen) v.webkitEnterFullscreen(); }); return; }
+    if (r.webkitRequestFullscreen) { r.webkitRequestFullscreen(); return; }
+    if (v && v.webkitEnterFullscreen) v.webkitEnterFullscreen();   // iPhone: trình phát toàn màn hình của iOS
+  }
+  function open() { P.root.classList.add("show"); if (P.wake) P.wake(); document.body.style.overflow = "hidden"; }
 
   // phát 1 link HLS (Safari/iPhone phát trực tiếp, máy khác dùng hls.js); lỗi thì gọi onFail
   async function playHls(url, onFail) {
