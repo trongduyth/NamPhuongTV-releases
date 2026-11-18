@@ -218,6 +218,7 @@
   <div class="logo"><div class="nm">Nam Phương<b>TV</b></div><small id="ver"></small></div>
   <nav id="tabs">
     <div class="f" data-go="live"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 21h8M9 2l3 4 3-4"/></svg><span>Truyền hình</span></div>
+    <div class="f" data-go="fpt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 21h8M9 2l3 4 3-4"/></svg><span>Truyền hình FPT</span></div>
     <div class="f" data-go="src" data-src="nguonc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></svg><span>Nguồn C</span></div>
     <div class="f" data-go="src" data-src="vsmov"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></svg><span>Nguồn VSMOV</span></div>
     <div class="f" data-go="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg><span>Tìm kiếm</span></div>
@@ -243,6 +244,7 @@
   </section>
   <section class="view" id="v-history"></section>
   <section class="view" id="v-live"></section>
+  <section class="view" id="v-fpt"></section>
   <section class="view" id="v-settings">
     <div class="ptitle">Cài đặt</div>
     <div class="field"><label>Phát video bằng</label><div class="chips" id="player-chips"></div></div>
@@ -729,6 +731,266 @@ function playLive(i) {
   A.playLive(JSON.stringify(live.flat), i);
 }
 
+
+/* ---------- Truyền hình FPT (IPTV udp multicast, chỉ xem được trong mạng FPT có gói truyền hình) ---------- */
+const FPT_M3U = `#EXTM3U url-tvg="https://lichphatsong.io.vn/epg.xml"
+#-------------------VTV-------------------#
+#EXTINF:-1 group-title="VTV",VTV1 HD
+udp://@225.1.2.249:30120
+#EXTINF:-1 group-title="VTV",VTV2 HD
+udp://@225.1.2.13:30120
+#EXTINF:-1 group-title="VTV",VTV3 HD
+udp://@225.1.2.247:30120
+#EXTINF:-1 group-title="VTV",VTV4 HD
+udp://@225.1.2.20:30120
+#EXTINF:-1 group-title="VTV",VTV5 HD
+udp://@225.1.1.131:30120
+#EXTINF:-1 group-title="VTV",VTV5 Tây Nam Bộ
+udp://@225.1.2.236:30120
+#EXTINF:-1 group-title="VTV",VTV5 Tây Nguyên
+udp://@225.1.1.108:30120
+#EXTINF:-1 group-title="VTV",VTV6 HD
+udp://@225.1.2.154:30120
+#EXTINF:-1 group-title="VTV",VTV Cần Thơ HD
+udp://@225.1.2.245:30120
+#EXTINF:-1 group-title="VTV",VTV7 HD
+udp://@225.1.2.96:30120
+#EXTINF:-1 group-title="VTV",VTV8 HD
+udp://@225.1.2.166:30120
+#EXTINF:-1 group-title="VTV",VTV9 HD
+udp://@225.1.1.128:30120
+#EXTINF:-1 group-title="VTV",Vietnam Today
+udp://@225.1.2.190:30120
+#-------------------Thiết yếu-------------------#
+#EXTINF:-1 group-title="Kênh TH Thiết yếu",ANTV HD
+udp://@225.1.2.169:30120
+#EXTINF:-1 group-title="Kênh TH Thiết yếu",QPVN HD
+udp://@225.1.2.217:30120
+#EXTINF:-1 group-title="Kênh TH Thiết yếu",Nhân Dân TV
+udp://@225.1.1.91:30120
+#EXTINF:-1 group-title="Kênh TH Thiết yếu",Quốc Hội HD
+udp://@225.1.2.148:30120
+#EXTINF:-1 group-title="Kênh TH Thiết yếu",VNEWS / TTXVN
+udp://@225.1.1.43:30120
+#EXTINF:-1 group-title="Kênh TH Thiết yếu",VOV TV
+udp://@225.1.2.171:30120
+#-------------------HTV/HTVC-------------------#
+#EXTINF:-1 group-title="HTV/HTVC",HTV1
+udp://@225.1.1.180:30120
+#EXTINF:-1 group-title="HTV/HTVC",HTV2 Vie Channel
+udp://@225.1.1.193:30120
+#EXTINF:-1 group-title="HTV/HTVC",HTV3
+udp://@225.1.1.178:30120
+#EXTINF:-1 group-title="HTV/HTVC",HTV4 / Keys
+udp://@225.1.1.177:30120
+#EXTINF:-1 group-title="HTV/HTVC",HTV7 HD
+udp://@225.1.1.192:30120
+#EXTINF:-1 group-title="HTV/HTVC",HTV9 HD
+udp://@225.1.1.190:30120
+#EXTINF:-1 group-title="HTV/HTVC",HTV Thể Thao
+udp://@225.1.1.165:30120
+#EXTINF:-1 group-title="HTV/HTVC",HTVC Ca Nhạc
+udp://@225.1.1.185:30120
+#EXTINF:-1 group-title="HTV/HTVC",HTVC Du Lịch và Cuộc Sống
+udp://@225.1.1.166:30120
+#EXTINF:-1 group-title="HTV/HTVC",HTVC Gia Đình
+udp://@225.1.1.170:30120
+#EXTINF:-1 group-title="HTV/HTVC",HTVC Phim
+udp://@225.1.1.184:30120
+#EXTINF:-1 group-title="HTV/HTVC",HTVC Phụ Nữ
+udp://@225.1.1.171:30120
+#EXTINF:-1 group-title="HTV/HTVC",HTVC Thuần Việt
+udp://@225.1.1.186:30120
+#EXTINF:-1 group-title="HTV/HTVC",HTVC+
+udp://@225.1.1.181:30120
+#EXTINF:-1 group-title="HTV/HTVC",FBNC
+udp://@225.1.1.182:30120
+#-------------------VTC-------------------#
+#EXTINF:-1 group-title="VTC",VTC1 HD
+udp://@225.1.2.254:30120
+#EXTINF:-1 group-title="VTC",VTC2
+udp://@225.1.2.202:30120
+#EXTINF:-1 group-title="VTC",VTC3 HD
+udp://@225.1.2.251:30120
+#EXTINF:-1 group-title="VTC",VTC4
+udp://@225.1.2.200:30120
+#EXTINF:-1 group-title="VTC",VTC5
+udp://@225.1.2.199:30120
+#EXTINF:-1 group-title="VTC",VTC6
+udp://@225.1.2.198:30120
+#EXTINF:-1 group-title="VTC",VTC7 (Today TV)
+udp://@225.1.2.197:30120
+#EXTINF:-1 group-title="VTC",VTC8
+udp://@225.1.2.196:30120
+#EXTINF:-1 group-title="VTC",VTC9
+udp://@225.1.2.195:30120
+#EXTINF:-1 group-title="VTC",VTC10
+udp://@225.1.2.194:30120
+#EXTINF:-1 group-title="VTC",VTC11
+udp://@225.1.2.193:30120
+#EXTINF:-1 group-title="VTC",VTC12
+udp://@225.1.2.192:30120
+#EXTINF:-1 group-title="VTC",VTC13
+udp://@225.1.2.250:30120
+#EXTINF:-1 group-title="VTC",VTC14 HD
+udp://@225.1.2.88:30120
+#EXTINF:-1 group-title="VTC",VTC16 HD
+udp://@225.1.2.190:30120
+#-------------------Quốc Tế-------------------#
+#EXTINF:-1 group-title="Quốc Tế",ABC Australia
+udp://@225.1.2.21:30120
+#EXTINF:-1 group-title="Quốc Tế",Animal Planet
+udp://@225.1.1.231:30120
+#EXTINF:-1 group-title="Quốc Tế",Asian Food Network
+udp://@225.1.1.198:30120
+#EXTINF:-1 group-title="Quốc Tế",AXN
+udp://@225.1.2.225:30120
+#EXTINF:-1 group-title="Quốc Tế",BBC CbeeBies
+udp://@225.1.1.134:30120
+#EXTINF:-1 group-title="Quốc Tế",BBC Earth
+udp://@225.1.2.24:30120
+#EXTINF:-1 group-title="Quốc Tế",BBC Lifestyle
+udp://@225.1.2.52:30120
+#EXTINF:-1 group-title="Quốc Tế",BBC News
+udp://@225.1.2.74:30120
+#EXTINF:-1 group-title="Quốc Tế",Bloomberg
+udp://@225.1.2.91:30120
+#EXTINF:-1 group-title="Quốc Tế",Cartoon Network
+udp://@225.1.2.231:30120
+#EXTINF:-1 group-title="Quốc Tế",Cartoonito / Boomerang
+udp://@225.1.1.138:30120
+#EXTINF:-1 group-title="Quốc Tế",Cinema World
+udp://@225.1.1.142:30120
+#EXTINF:-1 group-title="Quốc Tế",Cinemax
+udp://@225.1.2.86:30120
+#EXTINF:-1 group-title="Quốc Tế",CNA
+udp://@225.1.1.202:30120
+#EXTINF:-1 group-title="Quốc Tế",CNN
+udp://@225.1.1.242:30120
+#EXTINF:-1 group-title="Quốc Tế",Da Vinci
+udp://@225.1.1.197:30120
+#EXTINF:-1 group-title="Quốc Tế",Discovery Asia
+udp://@225.1.2.223:30120
+#EXTINF:-1 group-title="Quốc Tế",Discovery Channel
+udp://@225.1.1.238:30120
+#EXTINF:-1 group-title="Quốc Tế",Dreamworks
+udp://@225.1.1.136:30120
+#EXTINF:-1 group-title="Quốc Tế",DW (English)
+udp://@225.1.1.46:30120
+#EXTINF:-1 group-title="Quốc Tế",Fashion TV
+udp://@225.1.2.227:30120
+#EXTINF:-1 group-title="Quốc Tế",France 24
+udp://@225.1.2.211:30120
+#EXTINF:-1 group-title="Quốc Tế",HBO
+udp://@225.1.2.233:30120
+#EXTINF:-1 group-title="Quốc Tế",KBS World
+udp://@225.1.1.196:30120
+#EXTINF:-1 group-title="Quốc Tế",KIX
+udp://@225.1.2.144:30120
+#EXTINF:-1 group-title="Quốc Tế",NHK World Japan
+udp://@225.1.1.47:30120
+#EXTINF:-1 group-title="Quốc Tế",Outdoor Channel
+udp://@225.1.2.215:30120
+#EXTINF:-1 group-title="Quốc Tế",TLC
+udp://@225.1.1.236:30120
+#EXTINF:-1 group-title="Quốc Tế",TV5 Monde Asie
+udp://@225.1.1.200:30120
+#EXTINF:-1 group-title="Quốc Tế",WBTV
+udp://@225.1.1.139:30120
+#EXTINF:-1 group-title="Quốc Tế",Arirang
+udp://@225.1.1.201:30120
+#EXTINF:-1 group-title="Quốc Tế",CNBC
+udp://@225.1.1.227:30120
+#-------------------Địa Phương-------------------#
+#EXTINF:-1 group-title="Địa phương",THVL1
+udp://@225.1.1.155:30120
+#EXTINF:-1 group-title="Địa phương",THVL2
+udp://@225.1.1.154:30120
+#EXTINF:-1 group-title="Địa phương",THVL3
+udp://@225.1.1.235:30120
+#EXTINF:-1 group-title="Địa phương",THVL4
+udp://@225.1.2.25:30120
+#EXTINF:-1 group-title="Địa phương",THVL5
+udp://@225.1.2.172:30120
+#EXTINF:-1 group-title="Địa phương",Hà Nội 1
+udp://@225.1.2.186:30120
+#EXTINF:-1 group-title="Địa phương",Hà Nội 2
+udp://@225.1.1.125:30120
+#EXTINF:-1 group-title="Địa phương",THP (Hải Phòng)
+udp://@225.1.1.44:30120
+#EXTINF:-1 group-title="Địa phương",THP3
+udp://@225.1.1.113:30120
+#EXTINF:-1 group-title="Địa phương",ĐNRT1 (Đà Nẵng)
+udp://@225.1.1.147:30120
+#EXTINF:-1 group-title="Địa phương",ĐNRT2
+udp://@225.1.1.146:30120
+#EXTINF:-1 group-title="Địa phương",BTV1 (Bình Dương)
+udp://@225.1.1.150:30120
+#EXTINF:-1 group-title="Địa phương",BTV2
+udp://@225.1.1.149:30120
+#EXTINF:-1 group-title="Địa phương",ĐNRTV1 (Đồng Nai)
+udp://@225.1.1.152:30120
+#EXTINF:-1 group-title="Địa phương",ĐNRTV2
+udp://@225.1.1.151:30120
+#EXTINF:-1 group-title="Địa phương",THĐT1 (Đồng Tháp)
+udp://@225.1.1.163:30120
+#EXTINF:-1 group-title="Địa phương",THĐT2
+udp://@225.1.1.210:30120
+#EXTINF:-1 group-title="Địa phương",ATV1 (An Giang)
+udp://@225.1.2.182:30120
+#EXTINF:-1 group-title="Địa phương",ATV2
+udp://@225.1.2.173:30120
+#EXTINF:-1 group-title="Địa phương",Cần Thơ 1
+udp://@225.1.1.132:30120
+#EXTINF:-1 group-title="Địa phương",Cần Thơ 2
+udp://@225.1.1.157:30120`;
+const FPT_ORDER = ["THVL", "HTV/HTVC", "VTV", "Kênh TH Thiết yếu", "Địa phương", "VTC", "Quốc Tế"];
+const fpt = { groups: null, flat: [] };
+function fptData() {
+  if (fpt.groups) return fpt;
+  const map = new Map(); let name = null, grp = "";
+  FPT_M3U.split(/\r?\n/).forEach(l => {
+    l = l.trim();
+    if (l.startsWith("#EXTINF")) { name = l.slice(l.lastIndexOf(",") + 1).trim(); grp = (l.match(/group-title="([^"]*)"/) || [])[1] || "Khác"; }
+    else if (name && /^(udp|rtp|https?):/i.test(l)) {
+      if (/^THVL\d/i.test(name)) grp = "THVL";
+      if (!map.has(grp)) map.set(grp, []);
+      map.get(grp).push({ name, urls: [l], logo: "" }); name = null;
+    }
+  });
+  const rank = g => { const i = FPT_ORDER.indexOf(g); return i < 0 ? 99 : i; };
+  fpt.groups = [...map.entries()].sort((a, b) => rank(a[0]) - rank(b[0])).map(([title, channels]) => ({ title, channels }));
+  fpt.flat = []; fpt.groups.forEach(g => g.channels.forEach(c => fpt.flat.push({ ...c, group: g.title })));
+  return fpt;
+}
+function renderFpt(focusIdx) {
+  const box = $("#v-fpt"), d = fptData(), last = A.getPref("fpt_last", "");
+  const lastIdx = d.flat.findIndex(c => c.name === last);
+  let html = `<div class="ptitle">Truyền hình FPT <small>${d.flat.length} kênh · chỉ xem được khi dùng mạng FPT có gói truyền hình</small></div>
+    <div class="lvbar">${lastIdx >= 0 ? `<div class="f watch" data-fch="${lastIdx}">▶ Xem tiếp: ${esc(last)}</div>` : ""}
+      <span class="st">Ra ngoài (4G, Wi-Fi khác) thì dùng tab Truyền hình</span></div>`;
+  let n = 0;
+  d.groups.forEach(g => {
+    html += `<div class="lvgrp"><h2>${esc(g.title)}<small>${g.channels.length} kênh</small></h2><div class="chgrid">` +
+      g.channels.map(c => { const i = n++; return `<div class="f ch" data-fch="${i}">
+        <div class="lg">${initials(c.name)}</div>
+        <div class="nm"><b>${esc(c.name)}</b><i>${i + 1}</i></div></div>`; }).join("") + `</div></div>`;
+  });
+  box.innerHTML = html;
+  if (focusIdx != null) restoreFocus("fpt", focusIdx, box.scrollTop);
+}
+function openFpt() {
+  stack.length = 0; show("fpt", null, false);
+  $("#v-fpt").scrollTop = 0;
+  renderFpt();
+  focusEl($("#v-fpt .ch"));
+}
+function playFpt(i) {
+  const d = fptData(); if (!d.flat[i]) return;
+  A.setPref("fpt_last", d.flat[i].name);
+  A.playLive(JSON.stringify(d.flat), i);
+}
+
 /* ---------- Tìm kiếm ---------- */
 // Tìm trong cả 2 nguồn cùng lúc; mỗi nguồn một khối kết quả, có nút trang riêng
 async function doSearch(page = 1, moveFocus = true) {
@@ -914,11 +1176,13 @@ function activate(el) {
     if (g === "home") return openHome(false);
     if (g === "src") return switchSource(el.dataset.src);
     if (g === "live") return openLive();
+    if (g === "fpt") return openFpt();
     stack.length = 0; show(g, null, false);
     if (g === "search") return focusEl($("#kw"));
     if (g === "settings") { renderSettings(); return focusEl($(".view.show .f.sel") || $("#api")); }
     if (g === "history") { renderHistory(); return focusEl($("#v-history .f") || el); }
   }
+  if (el.dataset.fch != null) return playFpt(+el.dataset.fch);
   if (el.dataset.ch != null) return playLive(+el.dataset.ch);
   if (el.id === "live-refresh") {
     live.loading = true; A.liveTvRefresh(); renderLive(); return focusEl($("#live-refresh"));
