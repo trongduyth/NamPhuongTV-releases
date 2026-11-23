@@ -231,11 +231,12 @@
   <section class="view" id="v-list"></section>
   <section class="view" id="v-detail"></section>
   <section class="view" id="v-search">
-    <div class="ptitle">Tìm kiếm <small>trong cả Nguồn C và Nguồn VSMOV</small></div>
+    <div class="ptitle">Tìm kiếm <small>phim (Nguồn C, Nguồn VSMOV) và kênh truyền hình</small></div>
     <div class="field">
-      <label>Nhập tên phim (OK để mở bàn phím), rồi bấm Enter hoặc nút “Tìm”</label>
+      <label>Nhập tên phim hoặc tên kênh (OK để mở bàn phím) rồi bấm “Tìm”, hoặc bấm “🎤 Nói” để tìm bằng giọng nói</label>
       <div class="rowi">
-        <input class="f" id="kw" type="search" placeholder="Ví dụ: Hoa Thiên Cốt">
+        <input class="f" id="kw" type="search" placeholder="Ví dụ: Hoa Thiên Cốt, VTV3">
+        <div class="f btn" id="voice-btn">🎤 Nói</div>
         <div class="f btn sel" id="do-search">🔍 Tìm</div>
         <div class="f btn" id="clear-kw">Xóa</div>
       </div>
@@ -999,10 +1000,33 @@ async function doSearch(page = 1, moveFocus = true) {
   const key = kw + "|" + page;   // tránh tìm 2 lần (Enter + change)
   if (doSearch.key === key && Date.now() - doSearch.t < 1500) return;
   doSearch.key = key; doSearch.t = Date.now(); doSearch.kw = kw;
-  box.innerHTML = Object.entries(SOURCES).map(([id, S]) =>
+  box.innerHTML = (page === 1 ? channelSearchHtml(kw) : "") + Object.entries(SOURCES).map(([id, S]) =>
     `<div class="ssec" id="sres-${id}"><h2>${esc(S.name)}</h2><div class="spinner"></div></div>`).join("");
+  lazy(box);
+  if (moveFocus && current?.view === "search" && box.querySelector(".ch")) focusEl(box.querySelector(".ch"));
   await Promise.all(Object.keys(SOURCES).map(id => searchOne(id, page, false)));
-  if (moveFocus && current?.view === "search") focusEl(box.querySelector(".pcard") || $("#kw"));
+  if (moveFocus && current?.view === "search" && !box.querySelector(".ch")) focusEl(box.querySelector(".pcard") || $("#kw"));
+}
+// Tìm kênh: bỏ dấu, bỏ khoảng trắng ("vtv 3" = "VTV3"), "Vĩnh Long" = THVL, cách đọc khi nói ("vê tê vê" = VTV)
+function vnKey(s) {
+  return String(s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/[^a-z0-9]/g, "")
+    .replace(/^kenh/, "").replace(/vinhlong/g, "thvl").replace(/teha(t|c)velo/g, "thvl")
+    .replace(/veteve/g, "vtv").replace(/ha(t|c)teve/g, "htv")
+    .replace(/(vtv|htv|thvl|vtc)(mot|hai|ba|bon|nam|sau|bay|tam|chin)(?![a-z])/g, (m, a, b) =>
+      a + (["mot", "hai", "ba", "bon", "nam", "sau", "bay", "tam", "chin"].indexOf(b) + 1));
+}
+function channelSearchHtml(kw) {
+  const q = vnKey(kw);
+  if (q.length < 2) return "";
+  if (!live.data) { const j = A.liveTvCached ? A.liveTvCached() : ""; if (j) setLive(j); }
+  const hit = list => list.map((c, i) => [c, i]).filter(([c]) => vnKey(c.name).includes(q)).slice(0, 16);
+  const card = (c, attr, i) => `<div class="f ch" ${attr}="${i}">
+    <div class="lg"${c.logo ? ` data-bg="${esc(c.logo)}"` : ""}>${c.logo ? "" : initials(c.name)}</div>
+    <div class="nm"><b>${esc(c.name)}</b><i>${esc(c.group || "")}</i></div></div>`;
+  const sec = (title, arr, attr) => arr.length ? `<div class="ssec"><h2>${title} <small>${arr.length} kênh</small></h2>
+    <div class="chgrid">${arr.map(([c, i]) => card(c, attr, i)).join("")}</div></div>` : "";
+  return sec("Kênh truyền hình", hit(live.flat), "data-ch")
+    + (appVersion() === "web" ? "" : sec("Truyền hình FPT", hit(fptData().flat), "data-fch"));
 }
 async function searchOne(id, page, moveFocus) {
   const kw = doSearch.kw, S = SOURCES[id], sec = $("#sres-" + id);
@@ -1022,6 +1046,25 @@ async function searchOne(id, page, moveFocus) {
     if (moveFocus) focusEl(sec.querySelector(".pcard") || sec.querySelector(".f") || $("#kw"));
   } catch (e) { sec.innerHTML = `<h2>${esc(S.name)}</h2><div class="msg">${esc(e.message)}</div>`; }
 }
+
+/* ---------- Tìm bằng giọng nói (remote có micro, điện thoại) ---------- */
+function startVoice() {
+  if (!A.voiceSearch) return toast("Thiết bị này chưa hỗ trợ tìm bằng giọng nói");
+  toast("Hãy nói tên phim hoặc tên kênh…");
+  A.voiceSearch();
+}
+window.onVoice = function (text) {
+  text = String(text || "").trim();
+  if (!text) return;
+  stack.length = 0; show("search", null, false);
+  $("#kw").value = text; doSearch.key = "";
+  toast("Tìm: " + text);
+  doSearch(1, true);
+};
+window.onVoiceError = function (msg) {
+  if (msg) toast(msg);
+  if (current?.view === "search") focusEl($("#voice-btn"));
+};
 
 /* ---------- Cài đặt ---------- */
 function renderSettings() {
@@ -1212,6 +1255,7 @@ function activate(el) {
     return focusEl($(`[data-player-pick="${playerMode()}"]`));
   }
   if (el.id === "kw" || el.id === "api") { el.focus(); return; }
+  if (el.id === "voice-btn") return startVoice();
   if (el.id === "do-search") {
     if (!$("#kw").value.trim()) { toast("Nhập tên phim trước đã"); return focusEl($("#kw")); }
     doSearch.key = ""; return doSearch(1);
@@ -1266,6 +1310,7 @@ document.addEventListener("visibilitychange", () => {
 function appVersion() { try { return A.getVersion ? A.getVersion() : "?"; } catch { return "?"; } }
 $("#ver").textContent = "v" + appVersion();
 buildMenu();
+if (!A.voiceSearch) $("#voice-btn").remove();   // trình duyệt không nhận giọng nói thì ẩn nút
 { const j = A.liveTvCached ? A.liveTvCached() : ""; if (j) setLive(j); }
 openLive();   // mở app vào thẳng tab Truyền hình
 // tự kiểm tra bản mới khi mở app (tối đa 3 giờ một lần)
