@@ -215,5 +215,15 @@
     playLive: (json, i) => { ui(); P.kind = "live"; P.list = JSON.parse(json); P.i = i; open(); playChannel(); },
     play: (title, eps, i, base, mode) => { ui(); P.kind = "movie"; P.base = title; P.ref = base; P.list = JSON.parse(eps); P.i = i; open(); playEpisode(); }
   };
+  // Tìm bằng giọng nói qua Safari/Chrome (nếu trình duyệt có); không có thì app tự ẩn nút 🎤
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SR) window.Android.voiceSearch = () => {
+    try {
+      const r = new SR(); r.lang = "vi-VN"; r.interimResults = false; r.maxAlternatives = 1;
+      r.onresult = e => call("onVoice", e.results[0][0].transcript);
+      r.onerror = e => call("onVoiceError", e.error === "not-allowed" ? "Hãy cho phép dùng micro để tìm bằng giọng nói" : "Không nghe rõ, thử lại nhé");
+      r.start();
+    } catch (e) { call("onVoiceError", "Trình duyệt không nhận giọng nói được"); }
+  };
   document.addEventListener("DOMContentLoaded", () => { ui(); loadLive(); });
 })();
