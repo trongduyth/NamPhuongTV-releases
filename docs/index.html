@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
 <style>html,body{background:#191b24} header{padding-left:max(3vw, env(safe-area-inset-left)) !important; padding-right:max(3vw, env(safe-area-inset-right)) !important}</style>
-<script src="shim.js?v=5e164025f0"></script>
+<script src="shim.js?v=c18ad1c1e8"></script>
 <title>Nam Phương TV</title>
 <style>
   :root {
@@ -134,13 +134,13 @@
   .dbd { position:relative; height:52vh; background:#0d0e14 center 20%/cover no-repeat; }
   .dbd::after { content:""; position:absolute; inset:0; background:linear-gradient(0deg, #191b24 0%, #191b2499 45%, #191b2433 100%); }
   .dwrap { position:relative; z-index:2; margin:-24vh 3vw 0; display:flex; gap:2.4vw; }
-  .dleft { width:24vw; flex:none; background:#191b24e6; border-radius:2vh; padding:2.4vh 1.4vw; backdrop-filter:blur(6px); }
+  .dleft { width:24vw; flex:none; background:#191b24e6; border-radius:2vh; padding:2.4vh 1.4vw; }
   .dleft .pst { width:11vw; aspect-ratio:2/3; border-radius:1.2vh; background:#2a2d3a center/cover no-repeat; margin-bottom:2vh; }
   .dleft h2 { margin:0 0 .6vh; font-size:3vh; line-height:1.2; }
   .dleft .orig { color:var(--gold); font-size:1.9vh; margin-bottom:1.6vh; }
   .dleft .lb { font-size:1.75vh; color:#fff; font-weight:600; margin:1.6vh 0 .6vh; }
   .dleft .tx { font-size:1.7vh; color:var(--sub); line-height:1.55; max-height:20vh; overflow:hidden; }
-  .dright { flex:1; min-width:0; background:#191b24e6; border-radius:2vh; padding:2.6vh 2vw; backdrop-filter:blur(6px); }
+  .dright { flex:1; min-width:0; background:#191b24e6; border-radius:2vh; padding:2.6vh 2vw; }
   .dacts { display:flex; flex-wrap:wrap; align-items:center; gap:1vw; margin-bottom:3vh; }
   .watch { display:inline-flex; align-items:center; gap:.8vw; padding:1.7vh 2.2vw; border-radius:99px; background:var(--goldg);
     color:#111; font-weight:700; font-size:2.2vh; box-shadow:0 0 3vh #ffd87544; }
@@ -283,11 +283,13 @@ const A = window.Android || {
   getPref: (k, d) => localStorage["p_" + k] ?? d,
   setPref: (k, v) => localStorage["p_" + k] = v,
   getVersion: () => "trình duyệt",
-  play: (t, e, i, base, mode) => { const ep = JSON.parse(e)[i]; window.open(mode === "vlc" && ep.m3u8 || ep.embed); }
+  play: (t, e, i, base, mode) => { const ep = JSON.parse(e)[i]; window.open(mode === "vlc" && ep.m3u8 || ep.embed); },
+  playLive: () => {},
+  liveTvRefresh: () => {}
 };
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const strip = s => { const d = document.createElement("div"); d.innerHTML = s || ""; return d.textContent.trim(); };
+const strip = s => new DOMParser().parseFromString(String(s || ""), "text/html").body.textContent.trim();
 const clean = s => String(s ?? "").replace(/\s+/g, " ").trim();
 const join = v => Array.isArray(v) ? v.filter(Boolean).join(", ") : clean(v);
 const mins = t => /^\d+$/.test(String(t ?? "").trim()) ? t + " phút" : t;
@@ -316,7 +318,7 @@ const SOURCES = {
     list: j => ({
       items: (j.items || []).map(m => ({ slug: m.slug, name: m.name, orig: m.original_name, year: m.year,
         imgA: m.thumb_url, imgB: m.poster_url, badge: m.current_episode, quality: m.quality, lang: m.language })),
-      page: j.paginate?.current_page, total: j.paginate?.total_page,
+      page: +j.paginate?.current_page || 0, total: +j.paginate?.total_page || 0,
     }),
     detail: j => {
       const m = j.movie || {};
@@ -352,7 +354,7 @@ const SOURCES = {
       items: (j.items || []).map(m => ({ slug: m.slug, name: m.name, orig: m.origin_name, year: m.year,
         imgA: m.thumb_url, imgB: m.poster_url, badge: m.episode_current || (m.year ? String(m.year) : ""),
         quality: m.quality, lang: m.lang })),
-      page: j.pagination?.currentPage, total: j.pagination?.totalPages,
+      page: +j.pagination?.currentPage || 0, total: +j.pagination?.totalPages || 0,
     }),
     detail: j => {
       const m = j.movie || {};
@@ -379,10 +381,22 @@ const apiOf = id => (A.getPref("api_" + id, "") || SOURCES[id].api).replace(/\/+
 function toast(t) { const el = $("#toast"); el.textContent = t; el.style.display = "block";
   clearTimeout(toast.h); toast.h = setTimeout(() => el.style.display = "none", 2500); }
 
-const cache = new Map();
-async function getJSON(id, path) {
-  const url = apiOf(id) + "/" + path;
-  if (cache.has(url)) return cache.get(url);
+// bộ nhớ đệm: url → { t, p } (p là lượt tải đang chạy hoặc đã xong); hạn 10 phút, tối đa 120 mục, lỗi thì bỏ
+const cache = new Map(), CACHE_TTL = 10 * 60e3, CACHE_MAX = 120;
+// base: địa chỉ gốc khác (nút Kiểm tra kết nối) — khi có base thì luôn tải mới, không dùng bộ nhớ đệm
+async function getJSON(id, path, base) {
+  const url = (base ? base.replace(/\/+$/, "") : apiOf(id)) + "/" + path;
+  if (base) return fetchJSON(url);
+  const c = cache.get(url);
+  if (c && Date.now() - c.t < CACHE_TTL) return c.p;
+  cache.delete(url);
+  const p = fetchJSON(url);
+  cache.set(url, { t: Date.now(), p });
+  while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
+  p.catch(() => { if (cache.get(url)?.p === p) cache.delete(url); });
+  return p;
+}
+async function fetchJSON(url) {
   const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 15000);
   try {
     const r = await fetch(url, { headers: { Accept: "application/json" }, signal: ctl.signal });
@@ -392,7 +406,6 @@ async function getJSON(id, path) {
     const j = await r.json();
     if (j.status === false || (typeof j.status === "string" && j.status !== "success"))
       throw new Error(j.message || j.msg || "API trả về lỗi");
-    cache.set(url, j);
     return j;
   } catch (e) {
     throw new Error(e.name === "AbortError" ? "Hết thời gian chờ kết nối." : e.message);
@@ -414,7 +427,9 @@ async function learn(src, m) {
   if (landKey[src] || !m) return;
   const saved = A.getPref("land_" + src, "");
   if (saved) { landKey[src] = saved; return; }
-  const [a, b] = await Promise.all([ratio(m.imgA), ratio(m.imgB)]);
+  // chờ tối đa 1,5 giây; ảnh chậm thì lần sau dò lại
+  const [a, b] = await Promise.race([Promise.all([ratio(m.imgA), ratio(m.imgB)]),
+    new Promise(r => setTimeout(() => r([0, 0]), 1500))]);
   if (a > 1.05 || b > 1.05) { landKey[src] = b >= a ? "B" : "A"; A.setPref("land_" + src, landKey[src]); }
 }
 const landOf = (src, m) => (landKey[src] === "A" ? m.imgA : landKey[src] === "B" ? m.imgB : m.imgB) || m.imgA || m.imgB || "";
@@ -423,7 +438,7 @@ const portOf = (src, m) => (landKey[src] === "A" ? m.imgB : landKey[src] === "B"
 /* tải ảnh khi thẻ sắp hiện ra (đỡ nặng cho TV) */
 const lazyIO = new IntersectionObserver(es => es.forEach(e => {
   if (e.isIntersecting) { const el = e.target; el.style.backgroundImage = `url('${el.dataset.bg}')`; lazyIO.unobserve(el); }
-}), { rootMargin: "60% 60%" });
+}), { rootMargin: "60% 60%", scrollMargin: "60% 60%" });
 function lazy(root) { root.querySelectorAll("[data-bg]").forEach(el => el.dataset.bg && lazyIO.observe(el)); }
 
 /* ---------- Thanh trên ---------- */
@@ -496,6 +511,7 @@ const TOPIC_COLORS = [
 let hero = { items: [], idx: 0, src: null, timer: null };
 
 async function openHome(focusContent) {
+  const tok = openHome.tok = {};   // lượt mở trang chủ mới hơn thì lượt cũ dừng ghi
   stack.length = 0;
   show("home", { src: srcId() }, false);
   const id = srcId(), S = SOURCES[id], box = $("#v-home");
@@ -506,20 +522,23 @@ async function openHome(focusContent) {
     ${S.menu.map(([t, p], i) => `<div class="sec"><div class="rowbox"><h2 class="ttl">${ttl(t, i)}
         <div class="f more" data-go="list" data-path="${esc(p)}" data-title="${esc(t)}">Xem toàn bộ ›</div></h2>
       <div class="row" id="row-${i}">${'<div class="skel"></div>'.repeat(4)}</div></div></div>`).join("")}`;
-  // hàng đầu tiên cũng là nguồn cho ảnh lớn
+  // hàng đầu tiên cũng là nguồn cho ảnh lớn; các hàng vẫn tải ngầm khi người dùng mở phim (Back về là thấy đủ)
   for (let i = 0; i < S.menu.length; i++) {
-    if (current?.view !== "home" || srcId() !== id) return;
+    if (openHome.tok !== tok) return;
     const row = $("#row-" + i);
     try {
       const L = S.list(await getJSON(id, S.listUrl(S.menu[i][1], 1)));
+      if (openHome.tok !== tok) return;
       if (i === 0) {
         await learn(id, L.items[0]);
+        if (openHome.tok !== tok) return;
         hero = { items: L.items.slice(0, 6), idx: 0, src: id, timer: hero.timer };
-        renderHero(focusContent);
+        renderHero(focusContent && current?.view === "home");
       }
       row.innerHTML = L.items.map(m => lcard(m, id)).join("") || `<div class="msg">Không có phim.</div>`;
       lazy(row);
     } catch (e) {
+      if (openHome.tok !== tok) return;
       row.innerHTML = `<div class="msg">${esc(e.message)}</div>`;
       if (i === 0) $("#hero-info").innerHTML = `<div class="msg">${esc(e.message)}<br>Kiểm tra mạng hoặc địa chỉ API trong Cài đặt.</div>`;
     }
@@ -535,7 +554,7 @@ function renderHero(focusIt) {
   $("#hero-thumbs").innerHTML = items.map((m, i) =>
     `<div class="f ${i === hero.idx ? "on" : ""}" data-hero="${i}" style="background-image:url('${esc(landOf(src, m))}')"></div>`).join("");
   showHero(hero.idx);
-  startHeroTimer();
+  if (current?.view === "home") startHeroTimer();
   if (focusIt) focusEl($("#hero-play"));
 }
 async function showHero(i) {
@@ -564,6 +583,7 @@ function startHeroTimer() {
   hero.timer = setInterval(() => {
     if (current?.view !== "home" || !hero.items.length) return;
     if (focused && focused.closest && focused.closest(".hero")) return;     // đang chọn ở ảnh lớn thì không tự chuyển
+    if ($("#v-home").scrollTop > innerHeight * .4) return;                // ảnh lớn đã cuộn khuất thì không đổi
     showHero((hero.idx + 1) % hero.items.length);
   }, 9000);
 }
@@ -577,6 +597,7 @@ async function renderList(st, focusIdx, scroll) {
   try {
     const L = S.list(await getJSON(st.src, S.listUrl(st.path, st.page)));
     await learn(st.src, L.items[0]);
+    if (current?.state !== st) return;      // người dùng đã sang màn hình khác
     box.innerHTML = `${head} · Trang ${L.page || st.page}/${L.total || "?"}</small></div>
       ${L.items.length ? `<div class="grid">${L.items.map(m => pcard(m, st.src)).join("")}</div>` : `<div class="msg">Không có phim.</div>`}
       <div class="pager">
@@ -584,10 +605,9 @@ async function renderList(st, focusIdx, scroll) {
         ${!L.total || st.page < L.total ? `<div class="f btn sel" data-page="${st.page + 1}">Trang sau ›</div>` : ""}
       </div>`;
     lazy(box);
-    if (current?.state !== st) return;      // người dùng đã sang màn hình khác
     if (focusIdx != null) restoreFocus("list", focusIdx, scroll);
     else if (!inNav()) focusEl(box.querySelector(".pcard") || box.querySelector(".f"));
-  } catch (e) { box.innerHTML = `${head}</small></div><div class="msg">${esc(e.message)}<br><br>Kiểm tra mạng hoặc địa chỉ API trong mục Cài đặt.</div>`; }
+  } catch (e) { if (current?.state !== st) return; box.innerHTML = `${head}</small></div><div class="msg">${esc(e.message)}<br><br>Kiểm tra mạng hoặc địa chỉ API trong mục Cài đặt.</div>`; }
 }
 function openList(path, title, page = 1, fromNav = true) {
   const st = { src: srcId(), path, title, page };
@@ -604,9 +624,11 @@ async function renderDetail(st, focusIdx) {
   try {
     const m = S.detail(await getJSON(st.src, S.detailUrl(st.slug)));
     await learn(st.src, m);
+    if (current?.state !== st) return;      // người dùng đã sang màn hình khác
     st.movie = m;
     if (st.server == null || st.server >= m.servers.length) st.server = 0;
     const hist = history().find(h => h.slug === m.slug && (h.src || "nguonc") === st.src);
+    const seen = new Set(hist?.seen || []);
     const srv = m.servers[st.server];
     const badges = `${m.quality ? `<span class="g">${esc(m.quality)}</span>` : ""}${m.year ? `<span>${esc(m.year)}</span>` : ""}
       ${m.ep ? `<span class="w">${esc(m.ep)}</span>` : ""}${m.time ? `<span>${esc(m.time)}</span>` : ""}${m.lang ? `<span>${esc(m.lang)}</span>` : ""}`;
@@ -631,13 +653,13 @@ async function renderDetail(st, focusIdx) {
           ${m.servers.length > 1 ? `<div class="tabs">${m.servers.map((s, i) =>
               `<div class="f btn ${i === st.server ? "sel" : ""}" data-server="${i}">${esc(s.name)}</div>`).join("")}</div>` : ""}
           ${srv ? `<div class="eph">Danh sách tập <small style="color:var(--sub);font-weight:400;font-size:1.8vh">· ${esc(srv.name)} · ${srv.eps.length} tập</small></div>
-            <div class="eps">${srv.eps.map((e, i) =>
-              `<div class="f btn ${hist && hist.seen && hist.seen.includes(e.name) ? "seen" : ""}" data-ep="${i}">${esc(e.name)}</div>`).join("")}</div>`
+            <div class="eps" data-srv="${st.server}">${srv.eps.map((e, i) =>
+              `<div class="f btn ${seen.has(e.name) ? "seen" : ""}" data-ep="${i}">${esc(e.name)}</div>`).join("")}</div>`
             : `<div class="msg">Phim chưa có tập nào để xem.</div>`}
         </div>
       </div>`;
-    if (current?.state === st) restoreFocus("detail", focusIdx ?? 0, focusIdx ? null : 0);
-  } catch (e) { box.innerHTML = `<div style="height:12vh"></div><div class="msg">${esc(e.message)}</div>`; }
+    restoreFocus("detail", focusIdx ?? 0, focusIdx ? null : 0);
+  } catch (e) { if (current?.state !== st) return; box.innerHTML = `<div style="height:12vh"></div><div class="msg">${esc(e.message)}</div>`; }
 }
 function openDetail(slug, src) { const st = { src: src || srcId(), slug, server: 0 }; show("detail", st); $("#v-detail").scrollTop = 0; renderDetail(st); }
 
@@ -655,6 +677,14 @@ function playEp(i) {
   A.play(m.name + (srv.name ? " [" + srv.name + "]" : ""), JSON.stringify(srv.eps), i, SOURCES[st.src].referer, playerMode());
   setTimeout(async () => {
     if (current?.state !== st) return;      // đã rời trang chi tiết
+    // vẫn đang hiện đúng server: chỉ đánh dấu tập đã xem và đổi nút "Xem tiếp", không dựng lại cả trang
+    const eps = $("#v-detail .eps"), b = eps && +eps.dataset.srv === st.server && eps.querySelector(`[data-ep="${i}"]`);
+    if (b) {
+      b.classList.add("seen");
+      const w = $("#resume") || $("#watch-now");
+      if (w) { w.id = "resume"; delete w.dataset.ep; w.textContent = "▶ Xem tiếp tập " + ep.name; }
+      return focusEl(b);
+    }
     await renderDetail(st, focusIndex());
     if (current?.state === st) focusEl(document.querySelector(`#v-detail .eps [data-ep="${i}"]`) || focused);
   }, 800);
@@ -1125,7 +1155,7 @@ window.onUpdateState = function (json) {
   $("#upd-st").textContent = s.msg + (s.state === "download" && s.pct ? ` ${s.pct}%` : "");
   $(".bar").style.display = s.state === "download" || s.state === "install" ? "block" : "none";
   $("#upd-bar").style.width = (s.pct || 0) + "%";
-  upd.busy = s.state === "download" || s.state === "install";
+  upd.busy = s.state === "download";   // đến bước cài thì cho đóng hộp / bấm lại (người dùng có thể hủy trình cài)
   if (s.state === "perm" || s.state === "error") $("#upd-go").textContent = "⬇ Thử lại";
 };
 function renderUpdAuto() {
@@ -1215,7 +1245,7 @@ function activate(el) {
   if (el.dataset.hero != null) { showHero(+el.dataset.hero); return; }
   if (el.dataset.go) {
     const g = el.dataset.go;
-    if (g === "list") return openList(el.dataset.path, el.dataset.title);
+    if (g === "list") return openList(el.dataset.path, el.dataset.title, 1, false);   // Back về trang chủ
     if (g === "home") return openHome(false);
     if (g === "src") return switchSource(el.dataset.src);
     if (g === "live") return openLive();
@@ -1236,8 +1266,13 @@ function activate(el) {
   if (el.dataset.server) { current.state.server = +el.dataset.server; return renderDetail(current.state, focusIndex()); }
   if (el.dataset.ep) return playEp(+el.dataset.ep);
   if (el.id === "resume") {
-    const st = current.state, h = history().find(x => x.slug === st.movie.slug && x.src === st.src);
-    st.server = h.server || 0; return playEp(h.epIdx || 0);
+    const st = current.state, m = st.movie, h = history().find(x => x.slug === m.slug && x.src === st.src);
+    if (!h) return;
+    const sv = +h.server || 0; st.server = sv < m.servers.length ? sv : 0;   // server không còn thì dùng server đầu
+    const eps = m.servers[st.server].eps;
+    let i = eps.findIndex(e => e.name === h.epName);                        // tìm theo tên tập trước
+    if (i < 0) i = Math.min(+h.epIdx || 0, eps.length - 1);
+    return playEp(i);
   }
   if (el.id === "player-toggle") {
     A.setPref("player", playerMode() === "vlc" ? "app" : "vlc");
@@ -1266,13 +1301,12 @@ function activate(el) {
     A.setPref("api_" + id, v); cache.clear(); return toast("Đã lưu địa chỉ API cho " + SOURCES[id].name); }
   if (el.id === "reset-api") { A.setPref("api_" + id, ""); $("#api").value = apiOf(id); cache.clear(); return toast("Đã khôi phục mặc định"); }
   if (el.id === "test-api") {
-    const s = $("#api-status"); s.textContent = "Đang kiểm tra…"; cache.clear();
-    const saved = A.getPref("api_" + id, ""); A.setPref("api_" + id, $("#api").value.trim());
-    const S = SOURCES[id];
-    return getJSON(id, S.listUrl(S.menu[0][1], 1))
-      .then(j => { const L = S.list(j); s.textContent = `✔ Kết nối được: ${L.items.length} phim ở trang 1, tổng ${L.total ?? "?"} trang. Bấm Lưu để giữ địa chỉ này.`; })
-      .catch(e => s.textContent = "✘ " + e.message)
-      .finally(() => { A.setPref("api_" + id, saved); cache.clear(); });
+    // thử thẳng địa chỉ trong ô nhập, không đụng địa chỉ đã lưu (ô trống = địa chỉ mặc định)
+    const s = $("#api-status"); s.textContent = "Đang kiểm tra…";
+    const S = SOURCES[id], base = $("#api").value.trim() || S.api;
+    return getJSON(id, S.listUrl(S.menu[0][1], 1), base)
+      .then(j => { const L = S.list(j); s.textContent = `✔ Kết nối được: ${L.items.length} phim ở trang 1, tổng ${L.total || "?"} trang. Bấm Lưu để giữ địa chỉ này.`; })
+      .catch(e => s.textContent = "✘ " + e.message);
   }
   if (el.id === "clear-hist") { A.setPref("history", "[]"); renderHistory(); focusEl($("header .f.active") || $("header [data-go=live]")); }
 }
@@ -1286,8 +1320,11 @@ document.addEventListener("keydown", e => {
   }
   if (inInput && k === "Enter") {
     e.preventDefault();
-    const id = document.activeElement.id; document.activeElement.blur();
+    // tìm TRƯỚC khi blur: blur sinh sự kiện change → doSearch(1, false) sẽ bị chống trùng bỏ qua,
+    // nên lượt có chuyển con trỏ xuống kết quả là lượt chạy
+    const inp = document.activeElement, id = inp.id;
     if (id === "kw") doSearch(1);
+    inp.blur();
     if (id === "api") focusEl($("#save-api"));
     return;
   }

@@ -123,10 +123,15 @@
     }, true);
     return P;
   }
-  let hls = null;
-  function clear() { if (hls) { hls.destroy(); hls = null; } P.stage.innerHTML = ""; }
+  // gen: thế hệ phát, tăng khi mở kênh/tập mới và khi đóng; hẹn giờ, await, báo lỗi của lượt cũ thấy gen khác thì bỏ
+  let hls = null, gen = 0;
+  function clear() {
+    if (hls) { hls.destroy(); hls = null; }
+    P.stage.querySelectorAll("video").forEach(v => { v.removeAttribute("src"); v.load(); });   // dừng tải luồng cũ
+    P.stage.innerHTML = "";
+  }
   function msg(t) { let m = P.stage.querySelector(".msg"); if (!m) { m = document.createElement("div"); m.className = "msg"; P.stage.appendChild(m); } m.textContent = t; m.hidden = !t; }
-  function close() { clear(); P.root.classList.remove("show"); document.body.style.overflow = ""; if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); }
+  function close() { gen++; clear(); P.root.classList.remove("show"); document.body.style.overflow = ""; if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); }
   function fullscreen() {
     const v = P.stage.querySelector("video"), r = P.root;
     if (document.fullscreenElement || document.webkitFullscreenElement) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
@@ -136,30 +141,37 @@
   }
   function open() { P.root.classList.add("show"); if (P.wake) P.wake(); document.body.style.overflow = "hidden"; }
 
-  // phát 1 link HLS (Safari/iPhone phát trực tiếp, máy khác dùng hls.js); lỗi thì gọi onFail
+  // phát 1 link HLS (Safari/iPhone phát trực tiếp, máy khác dùng hls.js); lỗi thì gọi onFail (một lần, chỉ khi còn đúng thế hệ)
   async function playHls(url, onFail) {
     clear();
+    const my = gen;
+    let failed = false;
+    const fail = () => { if (failed || my !== gen) return; failed = true; onFail(); };   // video error + hls fatal gộp về đây
     const v = document.createElement("video");
     v.setAttribute("playsinline", ""); v.controls = true; v.autoplay = true;
     P.stage.appendChild(v); msg("Đang tải…");
-    v.addEventListener("playing", () => msg(""));
-    v.addEventListener("error", () => onFail());
+    v.addEventListener("playing", () => { if (my === gen) msg(""); });
+    v.addEventListener("error", fail);
     if (v.canPlayType("application/vnd.apple.mpegurl")) { v.src = url; v.play().catch(() => {}); return; }
     try {
       const Hls = await loadHls();
+      if (my !== gen) return;                       // đã đóng / đổi kênh trong lúc tải hls.js
       if (!Hls.isSupported()) { v.src = url; return; }
+      if (hls) { hls.destroy(); hls = null; }       // hủy hls cũ trước khi tạo mới
       hls = new Hls(); hls.loadSource(url); hls.attachMedia(v);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => v.play().catch(() => {}));
-      hls.on(Hls.Events.ERROR, (e, d) => { if (d.fatal) onFail(); });
-    } catch (e) { onFail(); }
+      hls.on(Hls.Events.MANIFEST_PARSED, () => { if (my === gen) v.play().catch(() => {}); });
+      hls.on(Hls.Events.ERROR, (e, d) => { if (d.fatal) fail(); });
+    } catch (e) { fail(); }
   }
   function playChannel() {
+    const my = ++gen;
     const c = P.list[P.i];
     const urls = c.urls.filter(u => !isHttps || u.startsWith("https:"));
     P.title.textContent = (P.i + 1) + "  " + c.name;
     try { localStorage[LS + "live_last"] = c.name; } catch (e) {}
     let k = 0;
     const next = () => {
+      if (my !== gen) return;                       // đã đổi kênh / đóng trình phát
       if (k >= urls.length) { clear(); msg(urls.length ? "Kênh này hiện không xem được trên trình duyệt. Bấm › để đổi kênh."
                                                : "Kênh này chỉ có link http, trình duyệt không mở được. Bấm › để đổi kênh."); return; }
       const u = urls[k++]; playHls(u, () => { if (k < urls.length) msg("Link lỗi, thử link " + (k + 1) + "…"); setTimeout(next, 500); });
@@ -167,6 +179,7 @@
     next();
   }
   function playEpisode() {
+    gen++;
     const ep = P.list[P.i];
     P.title.textContent = P.base + (P.list.length > 1 ? " · Tập " + ep.name : "");
     if (ep.m3u8) { playHls(ep.m3u8, () => frame(ep.embed)); return; }
@@ -182,7 +195,8 @@
     const box = document.createElement("div");
     box.style.cssText = "position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:24px;text-align:center;line-height:1.5";
     box.innerHTML = '<div style="font-size:18px;margin-bottom:10px">Nguồn C không cho phát trong ứng dụng web.</div>'
-      + '<div style="opacity:.8;margin-bottom:18px">Bấm nút dưới để mở trang phim trên Nguồn C, rồi chọn <b>Tập ' + (ep.name || "") + '</b> và bấm <b>Xem ngay</b>.</div>';
+      + '<div style="opacity:.8;margin-bottom:18px">Bấm nút dưới để mở trang phim trên Nguồn C, rồi chọn <b></b> và bấm <b>Xem ngay</b>.</div>';
+    box.querySelector("b").textContent = "Tập " + (ep.name || "");   // tên tập từ API: gán dạng chữ, không chèn HTML
     const a = document.createElement("a");
     a.href = url; a.target = "_blank"; a.rel = "noopener";
     a.textContent = "Mở trên trang Nguồn C ↗";
